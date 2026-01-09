@@ -1,0 +1,211 @@
+# eMCP Docker Compose
+# Tool Access Broker for MCP systems
+
+services:
+  db:
+    image: postgres:17
+    container_name: emcp-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-emcp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emcp}
+      POSTGRES_DB: emcp
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-emcp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - emcp-network
+
+  emcp-server:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.gateway
+    image: emcp:gateway
+    container_name: emcp-server
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-emcp}:${POSTGRES_PASSWORD:-emcp}@db:5432/emcp
+      SERVER_MODE: ${SERVER_MODE:-development}
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./configs:/configs:ro
+      - ./groups:/groups
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - emcp-network
+
+  emcp-manager:
+    build:
+      context: ./emcp-manager
+      dockerfile: Dockerfile
+    container_name: emcp-manager
+    ports:
+      - "5010:5000"
+    environment:
+      - MCPJUNGLE_API=http://emcp-server:8080
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./groups:/groups:rw
+      - ./data:/data:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - emcp-server
+    restart: unless-stopped
+    networks:
+      - emcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/current"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: emcp-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama-data:/root/.ollama
+      - ./modelfiles:/modelfiles:ro
+    environment:
+      - OLLAMA_KEEP_ALIVE=0
+    networks:
+      - emcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MCP Servers - add your own below
+  # Each server needs: stdin_open, tty, networks
+
+  github-mcp:
+    image: ghcr.io/github/github-mcp-server:latest
+    container_name: github-mcp
+    command: ["stdio"]
+    stdin_open: true
+    tty: true
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PAT}
+    restart: always
+    networks:
+      - emcp-network
+
+  gitea-mcp:
+    image: docker.gitea.com/gitea-mcp-server
+    container_name: gitea-mcp
+    command:
+      - "/app/gitea-mcp"
+      - "-t"
+      - "stdio"
+      - "--host"
+      - "${GITEA_HOST:-https://gitea.example.com}"
+    stdin_open: true
+    tty: true
+    environment:
+      - GITEA_ACCESS_TOKEN=${GITEA_API_TOKEN}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  perplexity-mcp:
+    image: mcp/perplexity-ask:latest
+    container_name: perplexity-mcp
+    command: ["node", "dist/index.js"]
+    stdin_open: true
+    tty: true
+    environment:
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  mapbox-mcp:
+    image: mcp/mapbox:latest
+    container_name: mapbox-mcp
+    command: ["node", "dist/esm/index.js"]
+    stdin_open: true
+    tty: true
+    environment:
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_PUBLIC_API_KEY}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  mapbox-devkit-mcp:
+    image: mcp/mapbox-devkit:latest
+    container_name: mapbox-devkit-mcp
+    command: ["node", "dist/esm/index.js"]
+    stdin_open: true
+    tty: true
+    environment:
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_DEV_API_KEY}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  elevenlabs-mcp:
+    image: mcp/elevenlabs:latest
+    container_name: elevenlabs-mcp
+    command: ["elevenlabs-mcp"]
+    stdin_open: true
+    tty: true
+    environment:
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  svelte-mcp:
+    image: oven/bun:1
+    container_name: svelte-mcp
+    command: ["bunx", "@sveltejs/mcp"]
+    stdin_open: true
+    tty: true
+    networks:
+      - emcp-network
+    restart: unless-stopped
+    volumes:
+      - /home/crtr/Projects:/projects:ro
+
+  ark-ui-mcp:
+    image: oven/bun:1
+    container_name: ark-ui-mcp
+    command: ["bunx", "-y", "@ark-ui/mcp"]
+    stdin_open: true
+    tty: true
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  homeassistant-mcp:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.ha-mcp
+    container_name: homeassistant-mcp
+    stdin_open: true
+    tty: true
+    environment:
+      - API_ACCESS_TOKEN=${HOME_ASSISTANT_ACCESS_TOKEN}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
+networks:
+  emcp-network:
+    driver: bridge

@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+# Install mcp-proxy
+RUN pip install --no-cache-dir mcp-proxy
+
+# Set working directory
+WORKDIR /app
+
+# Keep container running - MCPJungle invokes mcp-proxy via docker exec
+CMD ["tail", "-f", "/dev/null"]

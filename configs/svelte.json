@@ -1,0 +1,13 @@
+{
+    "name": "svelte",
+    "transport": "stdio",
+    "description": "Svelte Model Context Protocol server for LLMs",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "svelte-mcp",
+        "bunx",
+        "@sveltejs/mcp"
+    ]
+}

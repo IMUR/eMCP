@@ -1,0 +1,13 @@
+{
+    "name": "mapbox",
+    "transport": "stdio",
+    "description": "Mapbox geocoding and mapping services",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "mapbox-mcp",
+        "node",
+        "dist/esm/index.js"
+    ]
+}

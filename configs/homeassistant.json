@@ -1,0 +1,15 @@
+{
+  "name": "homeassistant",
+  "transport": "stdio",
+  "description": "Home Assistant smart home control via official MCP endpoint",
+  "command": "docker",
+  "args": [
+    "exec",
+    "-i",
+    "homeassistant-mcp",
+    "mcp-proxy",
+    "--transport=streamablehttp",
+    "--stateless",
+    "https://hom.ism.la/api/mcp"
+  ]
+}

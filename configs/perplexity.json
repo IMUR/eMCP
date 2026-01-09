@@ -1,0 +1,13 @@
+{
+    "name": "perplexity",
+    "transport": "stdio",
+    "description": "Perplexity AI search and answer engine",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "perplexity-mcp",
+        "node",
+        "dist/index.js"
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "name": "github",
+    "transport": "stdio",
+    "description": "GitHub integration",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "github-mcp",
+        "/server/github-mcp-server",
+        "stdio"
+    ]
+}

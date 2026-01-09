@@ -1,0 +1,14 @@
+{
+    "name": "ark-ui",
+    "transport": "stdio",
+    "description": "Ark UI component library documentation and snippets",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "ark-ui-mcp",
+        "bunx",
+        "-y",
+        "@ark-ui/mcp"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "name": "gitea",
+    "transport": "stdio",
+    "description": "Gitea integration for git.ism.la",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "gitea-mcp",
+        "/app/gitea-mcp",
+        "-t",
+        "stdio",
+        "--host",
+        "https://git.ism.la"
+    ]
+}

@@ -1,0 +1,12 @@
+{
+    "name": "elevenlabs",
+    "transport": "stdio",
+    "description": "ElevenLabs text-to-speech and voice synthesis",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "elevenlabs-mcp",
+        "elevenlabs-mcp"
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "name": "mapbox-devkit",
+    "transport": "stdio",
+    "description": "Mapbox DevKit - advanced mapping and location features",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "mapbox-devkit-mcp",
+        "node",
+        "dist/esm/index.js"
+    ]
+}
