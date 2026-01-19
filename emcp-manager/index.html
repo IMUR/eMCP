@@ -51,6 +51,36 @@
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 2px solid #e0e0e0;
+            cursor: pointer;
+        }
+
+        .server-header:hover {
+            background: #f9f9f9;
+        }
+
+        .expand-toggle {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 12px;
+            color: #666;
+            transition: transform 0.2s;
+        }
+
+        .server-section.collapsed .expand-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .server-section.collapsed .tools-grid {
+            display: none;
+        }
+
+        .server-section.collapsed .server-header {
+            margin-bottom: 0;
+            border-bottom: none;
         }
 
         .server-name {
@@ -323,6 +353,11 @@
         </div>
         <p class="subtitle" id="groupEndpoint">Select tools to include in the tool group</p>
 
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <button onclick="expandAll()" style="padding: 6px 12px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 12px;">▼ Expand All</button>
+            <button onclick="collapseAll()" style="padding: 6px 12px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 12px;">▶ Collapse All</button>
+        </div>
+
         <div id="message"></div>
         <div id="loading" class="loading">Loading tools...</div>
         <div id="servers"></div>
@@ -513,7 +548,9 @@
                 allTools = data.servers;
 
                 renderTools();
-                loadCurrentSelection();
+                collapseAllServers();
+                await loadCurrentSelection();
+                expandServersWithActiveTools();
                 loadPresets();
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('actions').style.display = 'flex';
@@ -535,10 +572,15 @@
                 const header = document.createElement('div');
                 header.className = 'server-header';
                 header.innerHTML = `
+                    <div class="expand-toggle">▼</div>
                     <div class="server-name">${serverName}</div>
                     <div class="server-count">${tools.length} tools</div>
-                    <button class="select-all-btn" onclick="toggleServer('${serverName}')">Select All</button>
+                    <button class="select-all-btn" onclick="event.stopPropagation(); toggleServer('${serverName}')">Select All</button>
                 `;
+                header.onclick = (e) => {
+                    if (e.target.classList.contains('select-all-btn')) return;
+                    toggleExpand(serverName);
+                };
                 section.appendChild(header);
 
                 const grid = document.createElement('div');
@@ -579,6 +621,39 @@
 
             checkboxes.forEach(cb => cb.checked = !allChecked);
             updateCount();
+        }
+
+        function toggleExpand(serverName) {
+            const section = document.querySelector(`[data-server="${serverName}"]`);
+            section.classList.toggle('collapsed');
+            saveExpandState();
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.server-section').forEach(s => s.classList.remove('collapsed'));
+            saveExpandState();
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('.server-section').forEach(s => s.classList.add('collapsed'));
+            saveExpandState();
+        }
+
+        function saveExpandState() {
+            // No longer persisting - expand state is based on active tools
+        }
+
+        function collapseAllServers() {
+            document.querySelectorAll('.server-section').forEach(s => s.classList.add('collapsed'));
+        }
+
+        function expandServersWithActiveTools() {
+            document.querySelectorAll('.server-section').forEach(section => {
+                const hasChecked = section.querySelector('input[type="checkbox"]:checked');
+                if (hasChecked) {
+                    section.classList.remove('collapsed');
+                }
+            });
         }
 
         function updateCount() {

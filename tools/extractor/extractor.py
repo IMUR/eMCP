@@ -174,6 +174,7 @@ def save_metadata(tools: list, output_path: str):
 
 def main():
     """CLI entry point."""
+    global MODEL, MCPJUNGLE_API
     import argparse
 
     parser = argparse.ArgumentParser(description="eMCP Taxonomy Extractor")
@@ -185,7 +186,6 @@ def main():
 
     args = parser.parse_args()
 
-    global MODEL, MCPJUNGLE_API
     MODEL = args.model
     MCPJUNGLE_API = args.api
 

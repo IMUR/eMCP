@@ -203,6 +203,17 @@ services:
       - emcp-network
     restart: unless-stopped
 
+  n8n-mcp:
+    image: node:22-slim
+    container_name: n8n-mcp
+    stdin_open: true
+    tty: true
+    environment:
+      - N8N_MCP_TOKEN=${N8N_MCP_TOKEN}
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
 volumes:
   db_data:
 

@@ -1,5 +1,9 @@
 {
   "name": "emcp-global",
   "description": "Default global tool group for eMCP",
-  "included_tools": []
+  "included_tools": [
+    "perplexity__perplexity_ask",
+    "perplexity__perplexity_research",
+    "perplexity__perplexity_reason"
+  ]
 }

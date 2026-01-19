@@ -1,0 +1,14 @@
+{
+    "name": "n8n",
+    "transport": "stdio",
+    "description": "n8n workflow automation MCP server",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "n8n-mcp",
+        "sh",
+        "-c",
+        "npx -y supergateway --streamableHttp https://n8n.ism.la/mcp-server/http --header \"authorization:Bearer $N8N_MCP_TOKEN\""
+    ]
+}
