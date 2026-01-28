@@ -54,9 +54,18 @@ services:
     environment:
       - MCPJUNGLE_API=http://emcp-server:8080
       - OLLAMA_HOST=http://ollama:11434
+      # Infisical integration for programmatic secret management
+      - EMCP_INFISICAL_SECRET=${EMCP_INFISICAL_SECRET:-}
+      - INFISICAL_WORKSPACE_ID=499561e0-1ed4-43dd-a5fe-13db53d3292b
+      - INFISICAL_API_URL=${INFISICAL_API_URL:-https://app.infisical.com}
+      - INFISICAL_ENVIRONMENT=prod
+      # Compose directory for docker-compose.override.yaml management
+      - COMPOSE_DIR=/emcp
     volumes:
       - ./groups:/groups:rw
       - ./data:/data:rw
+      - ./configs:/configs:rw
+      - .:/emcp:rw
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - emcp-server

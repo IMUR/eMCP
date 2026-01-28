@@ -152,6 +152,60 @@ Required secrets (stored in Infisical at `/emcp`):
 
 See the "Secret Management" section above for setup instructions.
 
+## Adding MCP Servers
+
+### Via Web UI
+The eMCP Manager dashboard (http://localhost:5010) has an "Add MCP Server" button that allows:
+1. Enter a GitHub repo URL, npm package, or Docker image
+2. Auto-detects configuration (image, command, required env vars)
+3. Enter environment variable values
+4. Provisions container and config automatically
+
+### Via API
+```bash
+# Detect server configuration from URL
+curl -X POST http://localhost:5010/api/servers/detect \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com/org/mcp-server"}'
+
+# Provision a new server
+curl -X POST http://localhost:5010/api/servers/provision \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-server",
+    "image": "ghcr.io/org/server:latest",
+    "command": ["node", "dist/index.js", "stdio"],
+    "env_vars": {"API_KEY": "secret"},
+    "description": "My MCP server"
+  }'
+
+# List all servers
+curl http://localhost:5010/api/servers
+
+# Delete a dynamic server
+curl -X DELETE http://localhost:5010/api/servers/my-server
+
+# Restart a server
+curl -X POST http://localhost:5010/api/servers/my-server/restart
+```
+
+### How It Works
+- New servers are added to `docker-compose.override.yaml` (keeps main compose file clean)
+- MCP config created in `configs/{name}.json`
+- Secrets stored in Infisical (if configured) or need manual `.env` setup
+- Container started via `docker compose up -d`
+
+### Infisical Token for Programmatic Access
+For the web UI to automatically store secrets when adding new MCP servers:
+1. Create a Machine Identity with Token Auth in Infisical
+2. Generate an access token with read/write access to `/emcp` path
+3. Add to Infisical at `/emcp`:
+   - `EMCP_INFISICAL_SECRET` - The access token
+
+The token is already configured in the docker-compose.yaml environment.
+
+Without this token, secrets must be added manually to Infisical via CLI.
+
 ## Design Principles
 
 - **The model performs analysis** - No pre-packaged inputs or intermediate schemas

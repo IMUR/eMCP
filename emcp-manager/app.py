@@ -6,7 +6,21 @@ from flask import Flask, jsonify, request, send_from_directory
 import subprocess
 import json
 import os
+import time
 import requests
+
+# Import new modules for server management
+from mcp_detector import detect_server, parse_mcp_url, DetectionError
+from compose_manager import (
+    add_service, remove_service, get_dynamic_services,
+    create_mcp_config, delete_mcp_config,
+    start_service, stop_service, restart_service,
+    get_container_status, is_dynamic_server, ComposeError
+)
+from infisical_client import (
+    create_secret, is_configured as infisical_configured,
+    InfisicalError
+)
 
 app = Flask(__name__)
 
@@ -691,6 +705,339 @@ def api_toggle_tool():
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# =============================================================================
+# Server Management Endpoints
+# =============================================================================
+
+@app.route('/api/servers/detect', methods=['POST'])
+def api_detect_server():
+    """
+    Detect MCP server configuration from a URL.
+
+    Input: {"url": "https://github.com/..." | "@org/package" | "ghcr.io/..."}
+
+    Returns detected configuration including:
+    - name: Suggested server name
+    - description: Server description
+    - image: Docker image to use
+    - command: Command to run
+    - required_env_vars: Environment variables needed
+    """
+    try:
+        data = request.get_json()
+        url = data.get('url', '').strip()
+
+        if not url:
+            return jsonify({
+                "success": False,
+                "error": "URL is required"
+            }), 400
+
+        detected = detect_server(url)
+
+        return jsonify({
+            "success": True,
+            "detected": detected
+        })
+
+    except DetectionError as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Detection failed: {str(e)}"
+        }), 500
+
+
+@app.route('/api/servers/provision', methods=['POST'])
+def api_provision_server():
+    """
+    Provision a new MCP server.
+
+    Input: {
+        "name": "server-name",
+        "image": "docker-image:tag",
+        "command": ["cmd", "args"],
+        "env_vars": {"KEY": "value", ...},
+        "description": "optional description"
+    }
+
+    This will:
+    1. Store secrets in Infisical (if configured)
+    2. Add service to docker-compose.override.yaml
+    3. Create MCP config in /configs/
+    4. Start the container
+    5. Verify tools are discovered
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        name = data.get('name', '').strip()
+        image = data.get('image', '').strip()
+        command = data.get('command', [])
+        env_vars = data.get('env_vars', {})
+        description = data.get('description', '')
+
+        if not name:
+            return jsonify({"success": False, "error": "Server name is required"}), 400
+
+        if not image:
+            return jsonify({"success": False, "error": "Docker image is required"}), 400
+
+        # Sanitize name
+        safe_name = "".join(c for c in name.lower() if c.isalnum() or c == '-').strip('-')
+        if not safe_name or len(safe_name) > 50:
+            return jsonify({"success": False, "error": "Invalid server name"}), 400
+
+        # Store secrets in Infisical if configured and env vars provided
+        env_var_names = []
+        if env_vars:
+            if infisical_configured():
+                for key, value in env_vars.items():
+                    if value:  # Only store non-empty values
+                        try:
+                            create_secret(key, value)
+                            env_var_names.append(key)
+                        except InfisicalError as e:
+                            return jsonify({
+                                "success": False,
+                                "error": f"Failed to store secret '{key}': {str(e)}"
+                            }), 500
+            else:
+                # Infisical not configured - secrets need to be added manually
+                env_var_names = list(env_vars.keys())
+
+        # Add service to docker-compose.override.yaml
+        try:
+            container_name = add_service(
+                name=safe_name,
+                image=image,
+                command=command if command else [],
+                env_vars=env_var_names,
+                description=description
+            )
+        except ComposeError as e:
+            return jsonify({
+                "success": False,
+                "error": f"Failed to add service: {str(e)}"
+            }), 500
+
+        # Create MCP config file
+        try:
+            config_path = create_mcp_config(
+                name=safe_name,
+                container_name=container_name,
+                command=command if command else ["stdio"],
+                description=description
+            )
+        except ComposeError as e:
+            # Rollback: remove service from override
+            remove_service(safe_name)
+            return jsonify({
+                "success": False,
+                "error": f"Failed to create config: {str(e)}"
+            }), 500
+
+        # Start the container
+        success, message = start_service(safe_name)
+        if not success:
+            # Rollback: remove config and service
+            delete_mcp_config(safe_name)
+            remove_service(safe_name)
+            return jsonify({
+                "success": False,
+                "error": f"Failed to start container: {message}"
+            }), 500
+
+        # Wait a moment for container to initialize
+        time.sleep(2)
+
+        # Check container status
+        status = get_container_status(container_name)
+        if not status.get("running"):
+            # Container failed to stay running
+            delete_mcp_config(safe_name)
+            remove_service(safe_name)
+            stop_service(safe_name)
+            return jsonify({
+                "success": False,
+                "error": f"Container failed to start (status: {status.get('status', 'unknown')})"
+            }), 500
+
+        # Try to count discovered tools (may take a moment)
+        tool_count = 0
+        try:
+            time.sleep(3)  # Give MCPJungle time to discover
+            tools_response = requests.get(f"{MCPJUNGLE_API}/api/v0/tools", timeout=10)
+            if tools_response.ok:
+                all_tools = tools_response.json()
+                tool_count = len([t for t in all_tools if t.get("name", "").startswith(f"{safe_name}__")])
+        except Exception:
+            pass  # Tool count is optional
+
+        return jsonify({
+            "success": True,
+            "message": f"Server '{safe_name}' provisioned successfully",
+            "name": safe_name,
+            "container_name": container_name,
+            "tool_count": tool_count,
+            "infisical_configured": infisical_configured(),
+            "note": "Refresh the page to see new tools" if tool_count == 0 else None
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Provisioning failed: {str(e)}"
+        }), 500
+
+
+@app.route('/api/servers', methods=['GET'])
+def api_list_servers():
+    """
+    List all MCP servers (both static and dynamic).
+
+    Returns server info including:
+    - name: Server name
+    - container_name: Docker container name
+    - running: Whether container is running
+    - dynamic: Whether this is a user-added server
+    - tool_count: Number of tools from this server
+    """
+    try:
+        servers = []
+
+        # Get all tools to count per server
+        tool_counts = {}
+        try:
+            tools_response = requests.get(f"{MCPJUNGLE_API}/api/v0/tools", timeout=10)
+            if tools_response.ok:
+                for tool in tools_response.json():
+                    server_name = tool.get("name", "").split("__")[0]
+                    tool_counts[server_name] = tool_counts.get(server_name, 0) + 1
+        except Exception:
+            pass
+
+        # Get static servers from configs directory
+        configs_dir = "/configs"
+        if os.path.exists(configs_dir):
+            for filename in os.listdir(configs_dir):
+                if filename.endswith('.json'):
+                    config_path = os.path.join(configs_dir, filename)
+                    try:
+                        with open(config_path) as f:
+                            config = json.load(f)
+                            name = config.get("name", filename[:-5])
+                            container_name = f"{name}-mcp"
+
+                            # Check if this is a dynamic server
+                            is_dynamic = is_dynamic_server(name)
+
+                            status = get_container_status(container_name)
+                            servers.append({
+                                "name": name,
+                                "container_name": container_name,
+                                "description": config.get("description", ""),
+                                "running": status.get("running", False),
+                                "status": status.get("status", "unknown"),
+                                "dynamic": is_dynamic,
+                                "tool_count": tool_counts.get(name, 0)
+                            })
+                    except Exception:
+                        continue
+
+        return jsonify({
+            "success": True,
+            "servers": servers
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/servers/<name>', methods=['DELETE'])
+def api_delete_server(name):
+    """
+    Delete a dynamically added MCP server.
+
+    This will:
+    1. Stop and remove the container
+    2. Remove from docker-compose.override.yaml
+    3. Delete the MCP config file
+
+    Only dynamic servers (added via this API) can be deleted.
+    """
+    try:
+        # Check if this is a dynamic server
+        if not is_dynamic_server(name):
+            return jsonify({
+                "success": False,
+                "error": f"Server '{name}' is not a dynamic server and cannot be deleted"
+            }), 400
+
+        # Stop the container
+        stop_service(name)
+
+        # Remove from override file
+        remove_service(name)
+
+        # Delete config file
+        delete_mcp_config(name)
+
+        return jsonify({
+            "success": True,
+            "message": f"Server '{name}' deleted successfully"
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/servers/<name>/restart', methods=['POST'])
+def api_restart_server(name):
+    """
+    Restart an MCP server container.
+    """
+    try:
+        success, message = restart_service(name)
+
+        if success:
+            return jsonify({
+                "success": True,
+                "message": f"Server '{name}' restarted"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": message
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/servers/infisical-status', methods=['GET'])
+def api_infisical_status():
+    """Check if Infisical is configured for secret management."""
+    return jsonify({
+        "success": True,
+        "configured": infisical_configured()
+    })
 
 
 if __name__ == '__main__':

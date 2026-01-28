@@ -335,6 +335,220 @@
             background: #ccc;
             cursor: not-allowed;
         }
+
+        /* Add Server Button */
+        .add-server-btn {
+            padding: 8px 16px;
+            background: #6f42c1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .add-server-btn:hover {
+            background: #5a32a3;
+        }
+
+        /* Add Server Modal */
+        .add-server-modal {
+            min-width: 500px;
+            max-width: 600px;
+        }
+
+        .add-server-modal .step {
+            display: none;
+        }
+
+        .add-server-modal .step.active {
+            display: block;
+        }
+
+        .step-description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .config-preview {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .config-field {
+            margin-bottom: 15px;
+        }
+
+        .config-field label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .config-field input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .config-field input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .env-vars-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .env-vars-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .env-var-input {
+            margin-bottom: 10px;
+        }
+
+        .env-var-input label {
+            display: block;
+            font-family: monospace;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .env-var-input input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .progress-container {
+            padding: 20px 0;
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            color: #666;
+        }
+
+        .progress-item .icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-item.pending .icon::before {
+            content: "○";
+            color: #ccc;
+        }
+
+        .progress-item.active .icon::before {
+            content: "◉";
+            color: #007bff;
+            animation: pulse 1s infinite;
+        }
+
+        .progress-item.done .icon::before {
+            content: "✓";
+            color: #28a745;
+        }
+
+        .progress-item.error .icon::before {
+            content: "✗";
+            color: #dc3545;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .result-success {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .result-success .icon {
+            font-size: 48px;
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+
+        .result-error {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .result-error .icon {
+            font-size: 48px;
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .result-error .error-message {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .modal-actions .back-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-actions .next-btn,
+        .modal-actions .provision-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        .modal-actions .next-btn:disabled,
+        .modal-actions .provision-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .modal-actions .done-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .infisical-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        .detected-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e9ecef;
+            border-radius: 3px;
+            font-size: 11px;
+            color: #666;
+            margin-left: 10px;
+        }
     </style>
 </head>
 
@@ -349,6 +563,7 @@
                 </select>
                 <button class="create-group-btn" onclick="showCreateGroupModal()">+ New Group</button>
                 <button id="deleteGroupBtn" class="delete-group-btn" onclick="deleteCurrentGroup()" disabled>Delete Group</button>
+                <button class="add-server-btn" onclick="showAddServerModal()">+ Add MCP Server</button>
             </div>
         </div>
         <p class="subtitle" id="groupEndpoint">Select tools to include in the tool group</p>
@@ -371,6 +586,83 @@
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="hideCreateGroupModal()">Cancel</button>
                 <button class="create-btn" onclick="createGroup()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Server Modal -->
+    <div id="addServerModal" class="modal-overlay">
+        <div class="modal add-server-modal">
+            <!-- Step 1: URL Input -->
+            <div id="addServerStep1" class="step active">
+                <h3>Add MCP Server</h3>
+                <p class="step-description">
+                    Enter a GitHub repository URL, npm package name, or Docker image reference.
+                </p>
+                <input type="text" id="serverUrl" placeholder="https://github.com/org/mcp-server or @org/package or ghcr.io/org/image:tag">
+                <div class="modal-actions">
+                    <button class="cancel-btn" onclick="hideAddServerModal()">Cancel</button>
+                    <button class="next-btn" id="detectBtn" onclick="detectServer()">Detect</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Configuration Review -->
+            <div id="addServerStep2" class="step">
+                <h3>Configure Server</h3>
+                <div id="infisicalWarning" class="infisical-warning" style="display: none;">
+                    Infisical is not configured. Secrets will need to be added manually to your .env file.
+                </div>
+                <div id="detectedConfig" class="config-preview">
+                    <!-- Populated dynamically -->
+                </div>
+                <div id="envVarsSection" class="env-vars-section" style="display: none;">
+                    <h4>Environment Variables</h4>
+                    <p class="step-description">Enter values for required environment variables:</p>
+                    <div id="envVarInputs">
+                        <!-- Dynamic inputs for each required env var -->
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="back-btn" onclick="showAddServerStep(1)">Back</button>
+                    <button class="provision-btn" id="provisionBtn" onclick="provisionServer()">Provision</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Provisioning Progress -->
+            <div id="addServerStep3" class="step">
+                <h3>Provisioning Server...</h3>
+                <div class="progress-container">
+                    <div class="progress-item pending" id="prog-secrets">
+                        <span class="icon"></span>
+                        <span>Storing secrets...</span>
+                    </div>
+                    <div class="progress-item pending" id="prog-compose">
+                        <span class="icon"></span>
+                        <span>Adding to Docker Compose...</span>
+                    </div>
+                    <div class="progress-item pending" id="prog-config">
+                        <span class="icon"></span>
+                        <span>Creating MCP config...</span>
+                    </div>
+                    <div class="progress-item pending" id="prog-start">
+                        <span class="icon"></span>
+                        <span>Starting container...</span>
+                    </div>
+                    <div class="progress-item pending" id="prog-verify">
+                        <span class="icon"></span>
+                        <span>Verifying tools...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Result -->
+            <div id="addServerStep4" class="step">
+                <div id="resultContent">
+                    <!-- Populated on success/failure -->
+                </div>
+                <div class="modal-actions">
+                    <button class="done-btn" onclick="hideAddServerModal(); loadTools();">Done</button>
+                </div>
             </div>
         </div>
     </div>
@@ -836,6 +1128,217 @@
         }
 
         document.getElementById('commitBtn').addEventListener('click', commitSelection);
+
+        // =====================================================================
+        // Add Server Functions
+        // =====================================================================
+
+        let detectedServerConfig = null;
+        let infisicalConfigured = false;
+
+        async function checkInfisicalStatus() {
+            try {
+                const response = await fetch('/api/servers/infisical-status');
+                const data = await response.json();
+                infisicalConfigured = data.configured;
+            } catch (e) {
+                infisicalConfigured = false;
+            }
+        }
+
+        function showAddServerModal() {
+            checkInfisicalStatus();
+            document.getElementById('addServerModal').classList.add('active');
+            document.getElementById('serverUrl').value = '';
+            document.getElementById('serverUrl').focus();
+            showAddServerStep(1);
+            resetProgressIndicators();
+        }
+
+        function hideAddServerModal() {
+            document.getElementById('addServerModal').classList.remove('active');
+            detectedServerConfig = null;
+        }
+
+        function showAddServerStep(step) {
+            document.querySelectorAll('#addServerModal .step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`addServerStep${step}`).classList.add('active');
+        }
+
+        function resetProgressIndicators() {
+            ['prog-secrets', 'prog-compose', 'prog-config', 'prog-start', 'prog-verify'].forEach(id => {
+                const el = document.getElementById(id);
+                el.className = 'progress-item pending';
+            });
+        }
+
+        function setProgressState(id, state) {
+            const el = document.getElementById(id);
+            el.className = `progress-item ${state}`;
+        }
+
+        async function detectServer() {
+            const url = document.getElementById('serverUrl').value.trim();
+            if (!url) {
+                showMessage('Please enter a URL or package name', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('detectBtn');
+            btn.disabled = true;
+            btn.textContent = 'Detecting...';
+
+            try {
+                const response = await fetch('/api/servers/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+
+                detectedServerConfig = data.detected;
+                renderConfigReview(detectedServerConfig);
+                showAddServerStep(2);
+            } catch (error) {
+                showMessage('Detection failed: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Detect';
+            }
+        }
+
+        function renderConfigReview(config) {
+            // Show/hide Infisical warning
+            document.getElementById('infisicalWarning').style.display =
+                (!infisicalConfigured && config.required_env_vars && config.required_env_vars.length > 0)
+                    ? 'block' : 'none';
+
+            // Render detected config fields
+            const detectedFrom = config.detected_from ?
+                `<span class="detected-badge">Detected from ${config.detected_from}</span>` : '';
+
+            document.getElementById('detectedConfig').innerHTML = `
+                <div class="config-field">
+                    <label>Server Name ${detectedFrom}</label>
+                    <input type="text" id="serverName" value="${config.name || ''}">
+                </div>
+                <div class="config-field">
+                    <label>Description</label>
+                    <input type="text" id="serverDesc" value="${config.description || ''}">
+                </div>
+                <div class="config-field">
+                    <label>Docker Image</label>
+                    <input type="text" id="serverImage" value="${config.image || ''}"
+                           placeholder="e.g., ghcr.io/org/server:latest or oven/bun:1">
+                </div>
+                <div class="config-field">
+                    <label>Command</label>
+                    <input type="text" id="serverCommand" value="${(config.command || []).join(' ')}"
+                           placeholder="e.g., node dist/index.js stdio">
+                </div>
+            `;
+
+            // Render env var inputs if required
+            const envSection = document.getElementById('envVarsSection');
+            const envInputs = document.getElementById('envVarInputs');
+
+            if (config.required_env_vars && config.required_env_vars.length > 0) {
+                envSection.style.display = 'block';
+                envInputs.innerHTML = config.required_env_vars.map(v => `
+                    <div class="env-var-input">
+                        <label>${v}</label>
+                        <input type="password" id="env-${v}" placeholder="Enter value for ${v}">
+                    </div>
+                `).join('');
+            } else {
+                envSection.style.display = 'none';
+                envInputs.innerHTML = '';
+            }
+        }
+
+        async function provisionServer() {
+            const name = document.getElementById('serverName').value.trim();
+            const description = document.getElementById('serverDesc').value.trim();
+            const image = document.getElementById('serverImage').value.trim();
+            const commandStr = document.getElementById('serverCommand').value.trim();
+            const command = commandStr ? commandStr.split(/\s+/).filter(s => s) : [];
+
+            if (!name) {
+                showMessage('Server name is required', 'error');
+                return;
+            }
+            if (!image) {
+                showMessage('Docker image is required', 'error');
+                return;
+            }
+
+            // Collect env vars
+            const envVars = {};
+            if (detectedServerConfig && detectedServerConfig.required_env_vars) {
+                for (const v of detectedServerConfig.required_env_vars) {
+                    const input = document.getElementById(`env-${v}`);
+                    if (input && input.value) {
+                        envVars[v] = input.value;
+                    }
+                }
+            }
+
+            // Show progress step
+            showAddServerStep(3);
+            resetProgressIndicators();
+
+            // Simulate progress (actual progress happens server-side)
+            setProgressState('prog-secrets', 'active');
+
+            try {
+                const response = await fetch('/api/servers/provision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description, image, command, env_vars: envVars })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Mark all as done
+                ['prog-secrets', 'prog-compose', 'prog-config', 'prog-start', 'prog-verify'].forEach(id => {
+                    setProgressState(id, 'done');
+                });
+
+                // Show success
+                document.getElementById('resultContent').innerHTML = `
+                    <div class="result-success">
+                        <div class="icon">✓</div>
+                        <h3>Server Added Successfully!</h3>
+                        <p>Server <strong>${data.name}</strong> is now running.</p>
+                        <p>Tools discovered: <strong>${data.tool_count}</strong></p>
+                        ${data.tool_count === 0 ? '<p style="color: #666; font-size: 13px;">Tools may appear after a page refresh.</p>' : ''}
+                        ${!data.infisical_configured && Object.keys(envVars).length > 0 ?
+                            '<p style="color: #856404; font-size: 13px;">Remember to add secrets to your .env file and restart.</p>' : ''}
+                    </div>
+                `;
+                showAddServerStep(4);
+
+            } catch (error) {
+                // Mark failed
+                setProgressState('prog-secrets', 'error');
+
+                document.getElementById('resultContent').innerHTML = `
+                    <div class="result-error">
+                        <div class="icon">✗</div>
+                        <h3>Provisioning Failed</h3>
+                        <p class="error-message">${error.message}</p>
+                        <p style="color: #666; font-size: 13px;">Check the server logs for more details.</p>
+                    </div>
+                `;
+                showAddServerStep(4);
+            }
+        }
 
         // Load tools on page load
         loadTools();
