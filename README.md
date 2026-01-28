@@ -4,19 +4,52 @@ Tool Access Broker for MCP systems. Filters which tools AI agents can access to 
 
 ## Quick Start
 
-```bash
-# Start infrastructure
-docker compose up -d
+### Prerequisites
 
-# Build Ollama models
+1. Install Infisical CLI:
+```bash
+# macOS
+brew install infisical/brew/infisical
+
+# Linux
+curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
+sudo apt-get update && sudo apt-get install -y infisical
+
+# Verify installation
+infisical --version
+```
+
+2. Authenticate with Infisical:
+```bash
+infisical login
+```
+
+3. Validate secrets are configured:
+```bash
+./validate-secrets.sh
+```
+
+### Starting eMCP
+
+```bash
+# Start all services with automated secret injection
+./start-emcp.sh
+
+# Build Ollama models (first time only)
 docker exec emcp-ollama ollama create emcp-extractor -f /modelfiles/extractor.Modelfile
 docker exec emcp-ollama ollama create emcp-selector -f /modelfiles/selector.Modelfile
 
 # Extract taxonomy (run once, or when tools change)
-python tools/extractor/extractor.py
+python tools/extractor/extractor.py -v
 
 # Select tools for a project
-python tools/selector/selector.py /path/to/project
+python tools/selector/selector.py /path/to/project -v
+```
+
+### Stopping eMCP
+
+```bash
+./stop-emcp.sh
 ```
 
 ## Services
@@ -55,18 +88,30 @@ eMCP/
 - [Architecture](docs/architecture.md) - System design and components
 - [Taxonomy](docs/taxonomy.md) - Tool classification schema
 
-## Environment Variables
+## Secret Management
 
-Required in `.env`:
+eMCP uses Infisical for secure secret management. Required secrets:
 
+- `EMCP_GITHUB_SECRET` - GitHub personal access token
+- `EMCP_GITEA_SECRET` - Gitea access token
+- `GITEA_HOST` - Gitea server URL
+- `EMCP_PERPLEXITY_SECRET` - Perplexity API key
+- `MAPBOX_PUBLIC_API_KEY` - Mapbox public token
+- `MAPBOX_DEV_API_KEY` - Mapbox dev token
+- `ELEVENLABS_API_KEY` - ElevenLabs API key
+- `HOME_ASSISTANT_ACCESS_TOKEN` - Home Assistant token
+- `N8N_MCP_TOKEN` - n8n MCP authentication token
+- `POSTGRES_USER` - PostgreSQL database user
+- `POSTGRES_PASSWORD` - PostgreSQL database password
+
+### Manual Secret Management (Fallback)
+
+If Infisical is unavailable, you can create a `.env` file manually:
+
+```bash
+cp .env.example .env
+# Edit .env with your secrets
+./start-emcp.sh
 ```
-GITHUB_PAT=
-GITEA_API_TOKEN=
-GITEA_HOST=
-PERPLEXITY_API_KEY=
-MAPBOX_PUBLIC_API_KEY=
-MAPBOX_DEV_API_KEY=
-ELEVENLABS_API_KEY=
-HOME_ASSISTANT_ACCESS_TOKEN=
-POSTGRES_PASSWORD=
-```
+
+**Note:** Never commit `.env` files to git. They are automatically excluded via `.gitignore`.

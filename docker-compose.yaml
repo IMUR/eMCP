@@ -98,7 +98,7 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PAT}
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${EMCP_GITHUB_SECRET}
     restart: always
     networks:
       - emcp-network
@@ -115,7 +115,7 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - GITEA_ACCESS_TOKEN=${GITEA_API_TOKEN}
+      - GITEA_ACCESS_TOKEN=${EMCP_GITEA_SECRET}
     networks:
       - emcp-network
     restart: unless-stopped
@@ -127,7 +127,7 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - PERPLEXITY_API_KEY=${EMCP_PERPLEXITY_SECRET}
     networks:
       - emcp-network
     restart: unless-stopped

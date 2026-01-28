@@ -2,8 +2,17 @@
   "name": "emcp-global",
   "description": "Default global tool group for eMCP",
   "included_tools": [
+    "ark-ui__list_components",
+    "ark-ui__list_examples",
+    "ark-ui__get_component_props",
+    "ark-ui__styling_guide",
+    "ark-ui__get_example",
     "perplexity__perplexity_ask",
     "perplexity__perplexity_research",
-    "perplexity__perplexity_reason"
+    "perplexity__perplexity_reason",
+    "svelte__get-documentation",
+    "svelte__list-sections",
+    "svelte__playground-link",
+    "svelte__svelte-autofixer"
   ]
 }

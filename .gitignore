@@ -2,9 +2,11 @@
 ollama-data/
 data/
 
-# Environment
+# Environment and secrets
 .env
 .env.*
+.env.backup
+.env.tmp
 
 # Python
 __pycache__/

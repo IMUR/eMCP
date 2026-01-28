@@ -40,6 +40,42 @@ curl http://localhost:5010/api/current
 curl http://localhost:5010/api/tools
 ```
 
+## Secret Management
+
+eMCP uses Infisical for automated secret injection. Secrets are NEVER committed to git.
+
+### Quick Start with Secrets
+```bash
+# Validate secrets are configured in Infisical
+./validate-secrets.sh
+
+# Start with automated secret injection
+./start-emcp.sh
+```
+
+### Manual Secret Management (Development)
+If you prefer manual control or Infisical is unavailable:
+```bash
+# Create .env from template
+cp .env.example .env
+
+# Edit with your secrets
+nano .env
+
+# Start normally
+./start-emcp.sh  # Will use existing .env as fallback
+```
+
+### Required Secrets
+All 11 secrets must be present in Infisical at path `/emcp`:
+- EMCP_GITHUB_SECRET, EMCP_GITEA_SECRET, GITEA_HOST
+- EMCP_PERPLEXITY_SECRET
+- MAPBOX_PUBLIC_API_KEY, MAPBOX_DEV_API_KEY
+- ELEVENLABS_API_KEY
+- HOME_ASSISTANT_ACCESS_TOKEN
+- N8N_MCP_TOKEN
+- POSTGRES_USER, POSTGRES_PASSWORD
+
 ## Architecture
 
 ### Two-Part System
@@ -100,14 +136,21 @@ Each MCP server needs a JSON config specifying transport and command:
 ```
 
 ### Environment Variables
-Required in `.env` or docker-compose environment:
-- `GITHUB_PAT` - GitHub personal access token
-- `GITEA_API_TOKEN` - Gitea access token
+Secrets are managed via Infisical and automatically injected at startup via `./start-emcp.sh`.
+
+Required secrets (stored in Infisical at `/emcp`):
+- `EMCP_GITHUB_SECRET` - GitHub personal access token
+- `EMCP_GITEA_SECRET` - Gitea access token
 - `GITEA_HOST` - Gitea server URL
-- `PERPLEXITY_API_KEY` - Perplexity API key
+- `EMCP_PERPLEXITY_SECRET` - Perplexity API key
 - `MAPBOX_PUBLIC_API_KEY`, `MAPBOX_DEV_API_KEY` - Mapbox tokens
 - `ELEVENLABS_API_KEY` - ElevenLabs API key
 - `HOME_ASSISTANT_ACCESS_TOKEN` - Home Assistant token
+- `N8N_MCP_TOKEN` - n8n MCP authentication token
+- `POSTGRES_USER` - PostgreSQL database user
+- `POSTGRES_PASSWORD` - PostgreSQL database password
+
+See the "Secret Management" section above for setup instructions.
 
 ## Design Principles
 

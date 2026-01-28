@@ -22,8 +22,13 @@
 ### 1. Start the stack
 
 ```bash
-cd /media/crtr/fortress/docker/eMCP
-docker compose up -d
+cd /mnt/ops/docker/eMCP
+
+# Validate secrets first
+./validate-secrets.sh
+
+# Start with automated secret injection
+./start-emcp.sh
 ```
 
 Wait for services to be healthy:
@@ -96,18 +101,22 @@ The selector model will:
 
 ---
 
-## Environment Variables
+## Secret Management
 
-Required in `.env`:
+Secrets are managed via Infisical and automatically injected at startup.
 
-```
-POSTGRES_PASSWORD=
-GITHUB_PAT=
-GITEA_API_TOKEN=
-GITEA_HOST=
-PERPLEXITY_API_KEY=
-MAPBOX_PUBLIC_API_KEY=
-MAPBOX_DEV_API_KEY=
-ELEVENLABS_API_KEY=
-HOME_ASSISTANT_ACCESS_TOKEN=
-```
+### Setup
+1. Ensure Infisical CLI is installed and authenticated
+2. Validate secrets: `./validate-secrets.sh`
+3. Start services: `./start-emcp.sh`
+
+### Required Secrets (in Infisical at /emcp)
+- EMCP_GITHUB_SECRET, EMCP_GITEA_SECRET, GITEA_HOST
+- EMCP_PERPLEXITY_SECRET
+- MAPBOX_PUBLIC_API_KEY, MAPBOX_DEV_API_KEY
+- ELEVENLABS_API_KEY
+- HOME_ASSISTANT_ACCESS_TOKEN
+- N8N_MCP_TOKEN
+- POSTGRES_USER, POSTGRES_PASSWORD
+
+See `README.md` for detailed setup instructions.
