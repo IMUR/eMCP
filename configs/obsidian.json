@@ -1,0 +1,14 @@
+{
+  "name": "obsidian",
+  "transport": "stdio",
+  "description": "Universal AI bridge for Obsidian vaults - connect any MCP-compatible assistant",
+  "command": "docker",
+  "args": [
+    "exec",
+    "-i",
+    "obsidian-mcp",
+    "bunx",
+    "@mauricio.wolff/mcp-obsidian",
+    "/mnt/ops/data/obsidian/colab"
+  ]
+}

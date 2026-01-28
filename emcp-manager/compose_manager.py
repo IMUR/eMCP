@@ -1,23 +1,31 @@
 """
-Docker Compose Override Manager
+Docker Compose Manager
 
-Manages dynamically added MCP servers via docker-compose.override.yaml.
-This approach keeps the main docker-compose.yaml untouched while allowing
-users to add custom servers.
+Safely manages MCP server entries in docker-compose.yaml.
+Uses ruamel.yaml to preserve comments and formatting.
+
+Container orchestration is handled by the HOST via systemd:
+- This module modifies docker-compose.yaml and writes a trigger file
+- Systemd watches the trigger file and runs `docker compose up -d`
 """
 
 import os
-import subprocess
-import yaml
-from typing import Optional
+import shutil
+import json
+from datetime import datetime
+from pathlib import Path
 
-# Path to the override file (relative to compose project root)
-COMPOSE_DIR = os.getenv("COMPOSE_DIR", "/mnt/ops/docker/eMCP")
-OVERRIDE_FILE = os.path.join(COMPOSE_DIR, "docker-compose.override.yaml")
+from ruamel.yaml import YAML
+
+# Configuration
+COMPOSE_DIR = os.getenv("COMPOSE_DIR", "/emcp")
+COMPOSE_FILE = os.path.join(COMPOSE_DIR, "docker-compose.yaml")
+BACKUP_DIR = os.path.join(COMPOSE_DIR, "backups")
 CONFIGS_DIR = os.getenv("CONFIGS_DIR", "/configs")
+TRIGGER_FILE = os.path.join(COMPOSE_DIR, ".reload-trigger")
 
-# Network that all MCP servers must be on (compose prefixes with project name)
-NETWORK_NAME = os.getenv("EMCP_NETWORK", "emcp_emcp-network")
+# Label used to identify dynamically added services
+DYNAMIC_LABEL = "emcp.dynamic"
 
 
 class ComposeError(Exception):
@@ -25,40 +33,104 @@ class ComposeError(Exception):
     pass
 
 
-def load_override() -> dict:
+def _get_yaml():
+    """Get configured YAML parser that preserves formatting."""
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.width = 4096  # Prevent line wrapping
+    return yaml
+
+
+def trigger_reload():
     """
-    Load the docker-compose.override.yaml file.
+    Signal the host to reload docker-compose.
+
+    Writes to the trigger file that systemd is watching.
+    The host will run `docker compose up -d` when this file changes.
+    """
+    with open(TRIGGER_FILE, 'w') as f:
+        f.write(f"reload requested at {datetime.now().isoformat()}\n")
+
+
+def backup_compose_file() -> str:
+    """
+    Create a timestamped backup of docker-compose.yaml.
 
     Returns:
-        dict: Parsed YAML content, or empty structure if file doesn't exist
+        str: Path to the backup file
     """
-    if os.path.exists(OVERRIDE_FILE):
-        try:
-            with open(OVERRIDE_FILE, 'r') as f:
-                data = yaml.safe_load(f) or {}
-                return data
-        except yaml.YAMLError as e:
-            raise ComposeError(f"Failed to parse override file: {e}")
-    else:
-        return {"services": {}}
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = os.path.join(BACKUP_DIR, f"docker-compose.yaml.{timestamp}")
+
+    shutil.copy2(COMPOSE_FILE, backup_path)
+
+    # Keep only last 10 backups
+    backups = sorted(Path(BACKUP_DIR).glob("docker-compose.yaml.*"))
+    for old_backup in backups[:-10]:
+        old_backup.unlink()
+
+    return backup_path
 
 
-def save_override(data: dict) -> None:
+def load_compose() -> dict:
     """
-    Save the docker-compose.override.yaml file.
+    Load and parse the docker-compose.yaml file.
 
-    Args:
-        data: YAML structure to save
+    Returns:
+        dict: Parsed compose configuration
+
+    Raises:
+        ComposeError: If file cannot be read or parsed
     """
-    # Ensure services key exists
-    if "services" not in data:
-        data["services"] = {}
+    yaml = _get_yaml()
 
     try:
-        with open(OVERRIDE_FILE, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        with open(COMPOSE_FILE, 'r') as f:
+            data = yaml.load(f)
+            if data is None:
+                raise ComposeError("Empty compose file")
+            return data
+    except FileNotFoundError:
+        raise ComposeError(f"Compose file not found: {COMPOSE_FILE}")
     except Exception as e:
-        raise ComposeError(f"Failed to save override file: {e}")
+        raise ComposeError(f"Failed to parse compose file: {e}")
+
+
+def save_compose(data: dict) -> None:
+    """
+    Safely save the docker-compose.yaml file.
+
+    Uses atomic write (temp file + rename) to prevent corruption.
+
+    Args:
+        data: The compose configuration to save
+
+    Raises:
+        ComposeError: If save fails
+    """
+    yaml = _get_yaml()
+    temp_path = f"{COMPOSE_FILE}.tmp"
+
+    try:
+        # Write to temp file
+        with open(temp_path, 'w') as f:
+            yaml.dump(data, f)
+
+        # Validate by re-parsing
+        with open(temp_path, 'r') as f:
+            yaml.load(f)
+
+        # Atomic rename
+        os.rename(temp_path, COMPOSE_FILE)
+
+    except Exception as e:
+        # Clean up temp file on failure
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise ComposeError(f"Failed to save compose file: {e}")
 
 
 def add_service(
@@ -69,106 +141,118 @@ def add_service(
     description: str = ""
 ) -> str:
     """
-    Add a new MCP server service to the override file.
+    Add a new MCP server service to docker-compose.yaml.
+
+    Creates a backup before modification.
+    Triggers host reload after successful modification.
 
     Args:
-        name: Server name (will be suffixed with -mcp for container)
+        name: Server name (will be suffixed with -mcp)
         image: Docker image to use
         command: Command to run
-        env_vars: List of environment variable names (values from .env)
+        env_vars: List of environment variable names
         description: Optional description
 
     Returns:
-        str: Container name
+        str: Container name (same as service name)
 
     Raises:
         ComposeError: If service already exists or save fails
     """
-    data = load_override()
     service_name = f"{name}-mcp"
-    container_name = f"{name}-mcp"
 
-    if service_name in data.get("services", {}):
-        raise ComposeError(f"Service '{service_name}' already exists")
+    # Create backup first
+    backup_compose_file()
 
-    # Build service definition
-    service = {
-        "image": image,
-        "container_name": container_name,
-        "stdin_open": True,
-        "tty": True,
-        "networks": [NETWORK_NAME],
-        "restart": "unless-stopped"
-    }
+    try:
+        data = load_compose()
 
-    # Add command if specified
-    if command:
-        service["command"] = command
+        if 'services' not in data:
+            raise ComposeError("No services section in compose file")
 
-    # Add environment variables (reference from .env)
-    if env_vars:
-        service["environment"] = [f"{var}=${{{var}}}" for var in env_vars]
+        if service_name in data['services']:
+            raise ComposeError(f"Service '{service_name}' already exists")
 
-    # Add labels for tracking
-    service["labels"] = {
-        "emcp.dynamic": "true",
-        "emcp.description": description
-    }
+        # Build service definition matching existing pattern
+        service = {
+            'image': image,
+            'container_name': service_name,
+            'stdin_open': True,
+            'tty': True,
+            'networks': ['emcp-network'],
+            'restart': 'unless-stopped',
+            'labels': {
+                DYNAMIC_LABEL: 'true',
+                'emcp.description': description or f'Dynamic MCP server: {name}'
+            }
+        }
 
-    data["services"][service_name] = service
-    save_override(data)
+        # Add command if specified
+        if command:
+            service['command'] = command
 
-    return container_name
+        # Add environment variables (reference from .env)
+        if env_vars:
+            service['environment'] = [f"{var}=${{{var}}}" for var in env_vars]
+
+        # Add to services
+        data['services'][service_name] = service
+
+        save_compose(data)
+
+        # Signal host to reload
+        trigger_reload()
+
+        return service_name
+
+    except ComposeError:
+        raise
+    except Exception as e:
+        raise ComposeError(f"Failed to add service: {e}")
 
 
 def remove_service(name: str) -> bool:
     """
-    Remove a service from the override file.
+    Remove an MCP server service from docker-compose.yaml.
+
+    Creates a backup before modification.
+    Triggers host reload after successful modification.
 
     Args:
         name: Server name (without -mcp suffix)
 
     Returns:
         bool: True if service was removed
+
+    Raises:
+        ComposeError: If save fails
     """
-    data = load_override()
     service_name = f"{name}-mcp"
 
-    if service_name not in data.get("services", {}):
-        return False
+    # Create backup first
+    backup_compose_file()
 
-    del data["services"][service_name]
-    save_override(data)
+    try:
+        data = load_compose()
 
-    return True
+        if service_name not in data.get('services', {}):
+            return False
+
+        del data['services'][service_name]
+
+        save_compose(data)
+
+        # Signal host to reload (will stop removed containers)
+        trigger_reload()
+
+        return True
+
+    except ComposeError:
+        raise
+    except Exception as e:
+        raise ComposeError(f"Failed to remove service: {e}")
 
 
-def get_dynamic_services() -> list[dict]:
-    """
-    Get list of dynamically added services.
-
-    Returns:
-        list[dict]: List of service info dicts with keys:
-            - name: Service name
-            - container_name: Container name
-            - image: Docker image
-            - description: Service description
-    """
-    data = load_override()
-    services = []
-
-    for service_name, config in data.get("services", {}).items():
-        # Only include services with our dynamic label
-        labels = config.get("labels", {})
-        if labels.get("emcp.dynamic") == "true":
-            services.append({
-                "name": service_name.replace("-mcp", ""),
-                "container_name": config.get("container_name", service_name),
-                "image": config.get("image", "unknown"),
-                "description": labels.get("emcp.description", "")
-            })
-
-    return services
 
 
 def create_mcp_config(
@@ -196,8 +280,6 @@ def create_mcp_config(
 
     if os.path.exists(config_path):
         raise ComposeError(f"Config file already exists: {config_path}")
-
-    import json
 
     config = {
         "name": name,
@@ -233,165 +315,21 @@ def delete_mcp_config(name: str) -> bool:
     return False
 
 
-def start_service(name: str) -> tuple[bool, str]:
-    """
-    Start a container using docker run.
-
-    Args:
-        name: Server name (without -mcp suffix)
-
-    Returns:
-        tuple[bool, str]: (success, output/error message)
-    """
-    container_name = f"{name}-mcp"
-
-    # Load service config from override file
-    data = load_override()
-    service_name = f"{name}-mcp"
-
-    if service_name not in data.get("services", {}):
-        return False, f"Service {service_name} not found in override file"
-
-    service = data["services"][service_name]
-    image = service.get("image")
-    command = service.get("command", [])
-    env_vars = service.get("environment", [])
-
-    if not image:
-        return False, "No image specified for service"
-
-    try:
-        # Build docker run command
-        cmd = [
-            "docker", "run", "-d",
-            "--name", container_name,
-            "--network", NETWORK_NAME,
-            "-i",  # stdin_open
-            "--restart", "unless-stopped"
-        ]
-
-        # Add environment variables
-        for env in env_vars:
-            cmd.extend(["-e", env])
-
-        # Add labels
-        cmd.extend(["--label", "emcp.dynamic=true"])
-        cmd.extend(["--label", f"emcp.description={service.get('labels', {}).get('emcp.description', '')}"])
-
-        # Add image
-        cmd.append(image)
-
-        # Add command if specified
-        if command:
-            if isinstance(command, list):
-                cmd.extend(command)
-            else:
-                cmd.append(command)
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-
-        if result.returncode == 0:
-            return True, result.stdout or "Container started"
-        else:
-            return False, result.stderr or "Failed to start container"
-
-    except subprocess.TimeoutExpired:
-        return False, "Timeout waiting for container to start"
-    except Exception as e:
-        return False, str(e)
-
-
-def stop_service(name: str) -> tuple[bool, str]:
-    """
-    Stop and remove a container.
-
-    Args:
-        name: Server name (without -mcp suffix)
-
-    Returns:
-        tuple[bool, str]: (success, output/error message)
-    """
-    container_name = f"{name}-mcp"
-
-    try:
-        # Stop the container
-        result = subprocess.run(
-            ["docker", "stop", container_name],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-
-        # Remove the container (ignore errors if it doesn't exist)
-        subprocess.run(
-            ["docker", "rm", "-f", container_name],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        return True, "Container stopped"
-
-    except subprocess.TimeoutExpired:
-        return False, "Timeout waiting for container to stop"
-    except Exception as e:
-        return False, str(e)
-
-
-def restart_service(name: str) -> tuple[bool, str]:
-    """
-    Restart a container.
-
-    Args:
-        name: Server name (without -mcp suffix)
-
-    Returns:
-        tuple[bool, str]: (success, output/error message)
-    """
-    container_name = f"{name}-mcp"
-
-    try:
-        result = subprocess.run(
-            ["docker", "restart", container_name],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-
-        if result.returncode == 0:
-            return True, "Container restarted"
-        else:
-            return False, result.stderr or "Failed to restart container"
-
-    except subprocess.TimeoutExpired:
-        return False, "Timeout waiting for container to restart"
-    except Exception as e:
-        return False, str(e)
-
-
 def get_container_status(container_name: str) -> dict:
     """
-    Get status of a container.
+    Get status of a container via docker inspect.
 
     Args:
         container_name: Name of the container
 
     Returns:
-        dict: {
-            "exists": bool,
-            "running": bool,
-            "status": str
-        }
+        dict: {exists, running, status}
     """
+    import subprocess
+
     try:
         result = subprocess.run(
-            ["docker", "inspect", "--format",
-             "{{.State.Status}}", container_name],
+            ["docker", "inspect", "--format", "{{.State.Status}}", container_name],
             capture_output=True,
             text=True,
             timeout=10
@@ -417,17 +355,3 @@ def get_container_status(container_name: str) -> dict:
             "running": False,
             "status": "error"
         }
-
-
-def is_dynamic_server(name: str) -> bool:
-    """
-    Check if a server is dynamically added (vs defined in main compose).
-
-    Args:
-        name: Server name (without -mcp suffix)
-
-    Returns:
-        bool: True if this is a dynamic server
-    """
-    services = get_dynamic_services()
-    return any(s["name"] == name for s in services)

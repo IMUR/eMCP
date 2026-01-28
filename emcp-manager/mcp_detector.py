@@ -141,6 +141,7 @@ def fetch_github_metadata(repo: str) -> dict:
         "npm_package": None,
         "command": [],
         "required_env_vars": [],
+        "required_args": [],
         "detected_from": None
     }
 
@@ -163,28 +164,37 @@ def fetch_github_metadata(repo: str) -> dict:
 
     if pkg_data:
         result["description"] = pkg_data.get("description", "")
-        result["npm_package"] = pkg_data.get("name")
+        npm_name = pkg_data.get("name")
+        result["npm_package"] = npm_name
 
-        # Detect command from bin field
-        bin_field = pkg_data.get("bin")
-        if bin_field:
-            if isinstance(bin_field, str):
-                result["command"] = ["node", bin_field]
-            elif isinstance(bin_field, dict):
-                first_bin = list(bin_field.values())[0]
-                result["command"] = ["node", first_bin]
+        # For npm packages, use bun to run them
+        if npm_name:
+            result["image"] = "oven/bun:1"
+            result["command"] = ["bunx", npm_name]
+        else:
+            # Detect command from bin field
+            bin_field = pkg_data.get("bin")
+            if bin_field:
+                if isinstance(bin_field, str):
+                    result["command"] = ["node", bin_field]
+                elif isinstance(bin_field, dict):
+                    first_bin = list(bin_field.values())[0]
+                    result["command"] = ["node", first_bin]
 
-        # If no bin, try main field
-        if not result["command"]:
-            main = pkg_data.get("main")
-            if main:
-                result["command"] = ["node", main]
+            # If no bin, try main field
+            if not result["command"]:
+                main = pkg_data.get("main")
+                if main:
+                    result["command"] = ["node", main]
 
-    # Check for ghcr.io Docker image
-    ghcr_image = f"ghcr.io/{owner}/{repo_name}:latest"
-    result["image"] = ghcr_image
+            # No npm package name, try ghcr.io
+            result["image"] = f"ghcr.io/{owner}/{repo_name}:latest"
+    else:
+        # No package.json - might be Go/Rust with Docker releases
+        result["image"] = f"ghcr.io/{owner}/{repo_name}:latest"
+        result["command"] = ["stdio"]  # Common MCP server arg
 
-    # Try to detect env vars from README
+    # Try to detect env vars and required args from README
     readme_urls = [
         f"https://raw.githubusercontent.com/{owner}/{repo_name}/main/README.md",
         f"https://raw.githubusercontent.com/{owner}/{repo_name}/master/README.md",
@@ -194,8 +204,9 @@ def fetch_github_metadata(repo: str) -> dict:
         try:
             response = requests.get(readme_url, timeout=10)
             if response.ok:
-                env_vars = detect_env_vars(response.text)
-                result["required_env_vars"] = env_vars
+                readme_text = response.text
+                result["required_env_vars"] = detect_env_vars(readme_text)
+                result["required_args"] = detect_required_args(readme_text, result.get("npm_package", ""))
                 if not result["detected_from"]:
                     result["detected_from"] = "readme"
                 break
@@ -245,6 +256,7 @@ def fetch_npm_metadata(package_name: str) -> dict:
         "npm_package": package_name,
         "command": ["bunx", package_name],
         "required_env_vars": [],
+        "required_args": [],
         "detected_from": "npm"
     }
 
@@ -254,10 +266,11 @@ def fetch_npm_metadata(package_name: str) -> dict:
         # bunx handles bin resolution, so command stays as bunx <package>
         pass
 
-    # Try to detect env vars from README
+    # Try to detect env vars and required args from README
     readme = data.get("readme", "")
     if readme:
         result["required_env_vars"] = detect_env_vars(readme)
+        result["required_args"] = detect_required_args(readme, package_name)
 
     # Check repository for GitHub to detect Docker image
     repo_info = data.get("repository", {})
@@ -297,6 +310,7 @@ def fetch_docker_metadata(image_ref: str) -> dict:
         "npm_package": None,
         "command": [],  # User will need to specify
         "required_env_vars": [],
+        "required_args": [],
         "detected_from": "docker"
     }
 
@@ -350,6 +364,106 @@ def detect_env_vars(text: str) -> list[str]:
 
     # Sort for consistent output
     return sorted(env_vars)
+
+
+def detect_required_args(text: str, package_name: str = "") -> list[dict]:
+    """
+    Detect required command-line arguments from text (README, documentation).
+
+    Looks for patterns like:
+    - Usage: command <path>
+    - Usage: npx @package/name /path/to/vault
+    - Required: path to X
+
+    Args:
+        text: Text to search
+        package_name: Package name to look for in usage examples
+
+    Returns:
+        list[dict]: List of {name, description, placeholder} for each required arg
+    """
+    args = []
+
+    # Pattern 1: Usage lines with angle brackets <arg> or positional paths
+    # e.g., "Usage: npx @package/name <path>" or "Usage: command /path/to/vault"
+    usage_patterns = [
+        # <argument> style
+        r'[Uu]sage:?\s*(?:npx\s+)?(?:@?[\w./-]+\s+)?<([^>]+)>',
+        # /path/to/something style
+        r'[Uu]sage:?\s*(?:npx\s+)?(?:@?[\w./-]+)\s+(/\S+)',
+        # [required] style
+        r'[Uu]sage:?\s*(?:npx\s+)?(?:@?[\w./-]+\s+)?\[([^\]]+)\]',
+    ]
+
+    for pattern in usage_patterns:
+        matches = re.findall(pattern, text)
+        for match in matches:
+            arg_name = match.strip()
+            # Skip optional indicators
+            if arg_name.lower().startswith('option'):
+                continue
+            # Normalize path-like args
+            if arg_name.startswith('/path') or 'path' in arg_name.lower():
+                args.append({
+                    "name": "path",
+                    "description": f"Path argument: {arg_name}",
+                    "placeholder": "/path/to/directory"
+                })
+            elif 'vault' in arg_name.lower():
+                args.append({
+                    "name": "vault_path",
+                    "description": "Path to Obsidian vault",
+                    "placeholder": "/path/to/vault"
+                })
+            elif 'dir' in arg_name.lower() or 'folder' in arg_name.lower():
+                args.append({
+                    "name": "directory",
+                    "description": f"Directory: {arg_name}",
+                    "placeholder": "/path/to/directory"
+                })
+            else:
+                args.append({
+                    "name": arg_name.replace(' ', '_').replace('-', '_').lower(),
+                    "description": arg_name,
+                    "placeholder": f"<{arg_name}>"
+                })
+
+    # Pattern 2: Look for "Required:" or "Required argument:" sections
+    required_pattern = r'[Rr]equired(?:\s+argument)?:?\s*[`"]?([^`"\n]+)[`"]?'
+    matches = re.findall(required_pattern, text)
+    for match in matches:
+        match = match.strip()
+        if match and len(match) < 100:  # Sanity check
+            # Check if it's describing a path
+            if 'path' in match.lower() or 'directory' in match.lower() or 'folder' in match.lower():
+                arg_name = "path"
+                if 'vault' in match.lower():
+                    arg_name = "vault_path"
+                args.append({
+                    "name": arg_name,
+                    "description": match,
+                    "placeholder": "/path/to/directory"
+                })
+
+    # Pattern 3: Common MCP patterns - look for specific keywords
+    if 'vault' in text.lower() and 'obsidian' in text.lower():
+        # Obsidian-specific detection
+        if not any(a['name'] == 'vault_path' for a in args):
+            args.append({
+                "name": "vault_path",
+                "description": "Path to Obsidian vault",
+                "placeholder": "/path/to/obsidian/vault"
+            })
+
+    # Deduplicate by name
+    seen = set()
+    unique_args = []
+    for arg in args:
+        if arg['name'] not in seen:
+            seen.add(arg['name'])
+            unique_args.append(arg)
+
+    return unique_args
 
 
 def detect_server(url: str) -> dict:

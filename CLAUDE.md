@@ -190,13 +190,33 @@ curl -X POST http://localhost:5010/api/servers/my-server/restart
 ```
 
 ### How It Works
-- New servers are added to `docker-compose.override.yaml` (keeps main compose file clean)
+
+- New servers are added directly to `docker-compose.yaml` (with `emcp.dynamic: true` label)
 - MCP config created in `configs/{name}.json`
 - Secrets stored in Infisical (if configured) or need manual `.env` setup
-- Container started via `docker compose up -d`
+- Container writes `.reload-trigger` file, systemd runs `docker compose up -d`
+
+### Systemd Setup (Required for Add Server feature)
+
+The web UI cannot run `docker compose` directly. A systemd path unit watches for changes:
+
+```bash
+# One-time setup on the host
+cd /mnt/ops/docker/eMCP/systemd
+sudo ./install.sh
+```
+
+This installs:
+
+- `emcp-reload.path` - watches `.reload-trigger` file
+- `emcp-reload.service` - runs `docker compose up -d` when triggered
+
+Without this setup, adding servers via the web UI will modify configs but containers won't start automatically.
 
 ### Infisical Token for Programmatic Access
+
 For the web UI to automatically store secrets when adding new MCP servers:
+
 1. Create a Machine Identity with Token Auth in Infisical
 2. Generate an access token with read/write access to `/emcp` path
 3. Add to Infisical at `/emcp`:

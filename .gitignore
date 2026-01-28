@@ -1,6 +1,11 @@
 # Runtime data
 ollama-data/
 data/
+backups/
+.reload-trigger
+
+# Docker compose override (no longer used)
+docker-compose.override.yaml
 
 # Environment and secrets
 .env

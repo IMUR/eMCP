@@ -223,6 +223,21 @@ services:
       - emcp-network
     restart: unless-stopped
 
+  obsidian-mcp:
+    image: oven/bun:1
+    container_name: obsidian-mcp
+    stdin_open: true
+    tty: true
+    networks:
+      - emcp-network
+    restart: unless-stopped
+    labels:
+      emcp.dynamic: 'true'
+      emcp.description: Universal AI bridge for Obsidian vaults - connect any MCP-compatible assistant
+    command:
+      - bunx
+      - '@mauricio.wolff/mcp-obsidian'
+      - /mnt/ops/data/obsidian/colab
 volumes:
   db_data:
 

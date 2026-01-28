@@ -615,6 +615,13 @@
                 <div id="detectedConfig" class="config-preview">
                     <!-- Populated dynamically -->
                 </div>
+                <div id="requiredArgsSection" class="env-vars-section" style="display: none;">
+                    <h4>Required Arguments</h4>
+                    <p class="step-description">This server requires additional arguments:</p>
+                    <div id="requiredArgsInputs">
+                        <!-- Dynamic inputs for each required arg -->
+                    </div>
+                </div>
                 <div id="envVarsSection" class="env-vars-section" style="display: none;">
                     <h4>Environment Variables</h4>
                     <p class="step-description">Enter values for required environment variables:</p>
@@ -686,6 +693,18 @@
                 <button onclick="savePreset()"
                     style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Save
                     Selection as Preset</button>
+            </div>
+        </div>
+
+        <!-- MCP Servers Section -->
+        <div id="serversSection" class="presets-section"
+            style="margin-top: 30px; padding: 20px; background: #f3e8ff; border-radius: 8px; border: 1px solid #d8b4fe;">
+            <h3 style="margin-bottom: 15px; color: #6b21a8;">MCP Servers</h3>
+            <p style="font-size: 13px; color: #7c3aed; margin-bottom: 15px;">
+                Manage MCP server containers. Restart or remove servers as needed.
+            </p>
+            <div id="serversList">
+                <!-- Populated dynamically -->
             </div>
         </div>
 
@@ -1240,6 +1259,24 @@
                 </div>
             `;
 
+            // Render required args inputs if present
+            const argsSection = document.getElementById('requiredArgsSection');
+            const argsInputs = document.getElementById('requiredArgsInputs');
+
+            if (config.required_args && config.required_args.length > 0) {
+                argsSection.style.display = 'block';
+                argsInputs.innerHTML = config.required_args.map(arg => `
+                    <div class="env-var-input">
+                        <label>${arg.description || arg.name}</label>
+                        <input type="text" id="arg-${arg.name}" placeholder="${arg.placeholder || ''}"
+                               data-arg-name="${arg.name}">
+                    </div>
+                `).join('');
+            } else {
+                argsSection.style.display = 'none';
+                argsInputs.innerHTML = '';
+            }
+
             // Render env var inputs if required
             const envSection = document.getElementById('envVarsSection');
             const envInputs = document.getElementById('envVarInputs');
@@ -1263,7 +1300,17 @@
             const description = document.getElementById('serverDesc').value.trim();
             const image = document.getElementById('serverImage').value.trim();
             const commandStr = document.getElementById('serverCommand').value.trim();
-            const command = commandStr ? commandStr.split(/\s+/).filter(s => s) : [];
+            let command = commandStr ? commandStr.split(/\s+/).filter(s => s) : [];
+
+            // Collect required args and append to command
+            if (detectedServerConfig && detectedServerConfig.required_args) {
+                for (const arg of detectedServerConfig.required_args) {
+                    const input = document.getElementById(`arg-${arg.name}`);
+                    if (input && input.value.trim()) {
+                        command.push(input.value.trim());
+                    }
+                }
+            }
 
             if (!name) {
                 showMessage('Server name is required', 'error');
@@ -1310,19 +1357,23 @@
                     setProgressState(id, 'done');
                 });
 
-                // Show success
+                // Show success (with optional warning about container status)
+                const hasWarning = data.warning || !data.container_running;
                 document.getElementById('resultContent').innerHTML = `
                     <div class="result-success">
-                        <div class="icon">✓</div>
-                        <h3>Server Added Successfully!</h3>
-                        <p>Server <strong>${data.name}</strong> is now running.</p>
+                        <div class="icon">${hasWarning ? '⚠' : '✓'}</div>
+                        <h3>Server Added${hasWarning ? ' (with warning)' : ''}!</h3>
+                        <p>Server <strong>${data.name}</strong> has been configured.</p>
+                        <p>Container status: <strong style="color: ${data.container_running ? '#28a745' : '#dc3545'}">${data.container_status || 'unknown'}</strong></p>
                         <p>Tools discovered: <strong>${data.tool_count}</strong></p>
-                        ${data.tool_count === 0 ? '<p style="color: #666; font-size: 13px;">Tools may appear after a page refresh.</p>' : ''}
+                        ${data.warning ? `<p style="color: #856404; font-size: 13px;">${data.warning}</p>` : ''}
+                        ${data.tool_count === 0 && data.container_running ? '<p style="color: #666; font-size: 13px;">Tools may appear after a page refresh.</p>' : ''}
                         ${!data.infisical_configured && Object.keys(envVars).length > 0 ?
                             '<p style="color: #856404; font-size: 13px;">Remember to add secrets to your .env file and restart.</p>' : ''}
                     </div>
                 `;
                 showAddServerStep(4);
+                loadServers();
 
             } catch (error) {
                 // Mark failed
@@ -1340,8 +1391,94 @@
             }
         }
 
+        // =====================================================================
+        // Server Management
+        // =====================================================================
+
+        async function loadServers() {
+            try {
+                const response = await fetch('/api/servers');
+                const data = await response.json();
+
+                if (!data.success) return;
+
+                const list = document.getElementById('serversList');
+
+                if (data.servers.length === 0) {
+                    list.innerHTML = '<p style="color: #666; font-style: italic;">No servers configured.</p>';
+                    return;
+                }
+
+                list.innerHTML = data.servers.map(server => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: white; border-radius: 4px; margin-bottom: 8px; border: 1px solid #e9ecef;">
+                        <div>
+                            <strong style="color: #333;">${server.name}</strong>
+                            <span style="margin-left: 10px; font-size: 12px; color: ${server.running ? '#28a745' : '#dc3545'};">
+                                ${server.running ? 'Running' : 'Stopped'}
+                            </span>
+                            <span style="margin-left: 10px; font-size: 12px; color: #666;">
+                                ${server.tool_count} tools
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="restartServer('${server.name}')"
+                                style="padding: 5px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Restart
+                            </button>
+                            <button onclick="deleteServer('${server.name}')"
+                                style="padding: 5px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load servers', e);
+            }
+        }
+
+        async function deleteServer(name) {
+            if (!confirm(`Remove server '${name}'? This will stop the container and delete the config.`)) return;
+
+            try {
+                const response = await fetch(`/api/servers/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage(`Server '${name}' removed`, 'success');
+                    loadServers();
+                    loadTools();  // Refresh tools list
+                } else {
+                    showMessage('Error removing server: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showMessage('Error removing server: ' + e.message, 'error');
+            }
+        }
+
+        async function restartServer(name) {
+            try {
+                const response = await fetch(`/api/servers/${encodeURIComponent(name)}/restart`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage(`Server '${name}' restarted`, 'success');
+                    loadServers();
+                } else {
+                    showMessage('Error restarting server: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showMessage('Error restarting server: ' + e.message, 'error');
+            }
+        }
+
         // Load tools on page load
         loadTools();
+        loadServers();
     </script>
 </body>
 

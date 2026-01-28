@@ -12,10 +12,9 @@ import requests
 # Import new modules for server management
 from mcp_detector import detect_server, parse_mcp_url, DetectionError
 from compose_manager import (
-    add_service, remove_service, get_dynamic_services,
-    create_mcp_config, delete_mcp_config,
-    start_service, stop_service, restart_service,
-    get_container_status, is_dynamic_server, ComposeError
+    add_service, remove_service,
+    create_mcp_config, delete_mcp_config, trigger_reload,
+    get_container_status, ComposeError
 )
 from infisical_client import (
     create_secret, is_configured as infisical_configured,
@@ -844,36 +843,18 @@ def api_provision_server():
                 "error": f"Failed to create config: {str(e)}"
             }), 500
 
-        # Start the container
-        success, message = start_service(safe_name)
-        if not success:
-            # Rollback: remove config and service
-            delete_mcp_config(safe_name)
-            remove_service(safe_name)
-            return jsonify({
-                "success": False,
-                "error": f"Failed to start container: {message}"
-            }), 500
+        # add_service() already triggered host reload via systemd
+        # Wait for systemd to run docker compose up -d and restart emcp-server
+        time.sleep(5)
 
-        # Wait a moment for container to initialize
-        time.sleep(2)
-
-        # Check container status
+        # Check container status (informational, not a failure condition)
         status = get_container_status(container_name)
-        if not status.get("running"):
-            # Container failed to stay running
-            delete_mcp_config(safe_name)
-            remove_service(safe_name)
-            stop_service(safe_name)
-            return jsonify({
-                "success": False,
-                "error": f"Container failed to start (status: {status.get('status', 'unknown')})"
-            }), 500
+        container_running = status.get("running", False)
+        container_status = status.get("status", "unknown")
 
-        # Try to count discovered tools (may take a moment)
+        # Try to count discovered tools
         tool_count = 0
         try:
-            time.sleep(3)  # Give MCPJungle time to discover
             tools_response = requests.get(f"{MCPJUNGLE_API}/api/v0/tools", timeout=10)
             if tools_response.ok:
                 all_tools = tools_response.json()
@@ -881,15 +862,22 @@ def api_provision_server():
         except Exception:
             pass  # Tool count is optional
 
-        return jsonify({
+        # Server was added - success. Container status is separate.
+        response = {
             "success": True,
-            "message": f"Server '{safe_name}' provisioned successfully",
+            "message": f"Server '{safe_name}' added",
             "name": safe_name,
             "container_name": container_name,
+            "container_running": container_running,
+            "container_status": container_status,
             "tool_count": tool_count,
-            "infisical_configured": infisical_configured(),
-            "note": "Refresh the page to see new tools" if tool_count == 0 else None
-        })
+            "infisical_configured": infisical_configured()
+        }
+
+        if not container_running:
+            response["warning"] = f"Container status: {container_status}. Check 'docker logs {container_name}' if it doesn't start."
+
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({
@@ -901,13 +889,12 @@ def api_provision_server():
 @app.route('/api/servers', methods=['GET'])
 def api_list_servers():
     """
-    List all MCP servers (both static and dynamic).
+    List all MCP servers.
 
     Returns server info including:
     - name: Server name
     - container_name: Docker container name
     - running: Whether container is running
-    - dynamic: Whether this is a user-added server
     - tool_count: Number of tools from this server
     """
     try:
@@ -924,7 +911,7 @@ def api_list_servers():
         except Exception:
             pass
 
-        # Get static servers from configs directory
+        # Get servers from configs directory
         configs_dir = "/configs"
         if os.path.exists(configs_dir):
             for filename in os.listdir(configs_dir):
@@ -936,9 +923,6 @@ def api_list_servers():
                             name = config.get("name", filename[:-5])
                             container_name = f"{name}-mcp"
 
-                            # Check if this is a dynamic server
-                            is_dynamic = is_dynamic_server(name)
-
                             status = get_container_status(container_name)
                             servers.append({
                                 "name": name,
@@ -946,7 +930,6 @@ def api_list_servers():
                                 "description": config.get("description", ""),
                                 "running": status.get("running", False),
                                 "status": status.get("status", "unknown"),
-                                "dynamic": is_dynamic,
                                 "tool_count": tool_counts.get(name, 0)
                             })
                     except Exception:
@@ -967,35 +950,30 @@ def api_list_servers():
 @app.route('/api/servers/<name>', methods=['DELETE'])
 def api_delete_server(name):
     """
-    Delete a dynamically added MCP server.
+    Delete an MCP server.
 
     This will:
-    1. Stop and remove the container
-    2. Remove from docker-compose.override.yaml
-    3. Delete the MCP config file
-
-    Only dynamic servers (added via this API) can be deleted.
+    1. Delete the MCP config file
+    2. Remove from docker-compose.yaml (triggers host reload)
+    3. Host reload stops/removes the container and restarts emcp-server
     """
     try:
-        # Check if this is a dynamic server
-        if not is_dynamic_server(name):
+        # Delete config file first
+        delete_mcp_config(name)
+
+        # Remove from docker-compose.yaml (this triggers host reload)
+        # The reload will stop/remove the container and restart emcp-server
+        removed = remove_service(name)
+
+        if not removed:
             return jsonify({
                 "success": False,
-                "error": f"Server '{name}' is not a dynamic server and cannot be deleted"
-            }), 400
-
-        # Stop the container
-        stop_service(name)
-
-        # Remove from override file
-        remove_service(name)
-
-        # Delete config file
-        delete_mcp_config(name)
+                "error": f"Server '{name}' not found in docker-compose.yaml"
+            }), 404
 
         return jsonify({
             "success": True,
-            "message": f"Server '{name}' deleted successfully"
+            "message": f"Server '{name}' deleted. Host is reloading containers."
         })
 
     except Exception as e:
@@ -1009,11 +987,20 @@ def api_delete_server(name):
 def api_restart_server(name):
     """
     Restart an MCP server container.
+
+    Uses docker restart directly (works via socket).
     """
     try:
-        success, message = restart_service(name)
+        container_name = f"{name}-mcp"
 
-        if success:
+        result = subprocess.run(
+            ["docker", "restart", container_name],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0:
             return jsonify({
                 "success": True,
                 "message": f"Server '{name}' restarted"
@@ -1021,9 +1008,14 @@ def api_restart_server(name):
         else:
             return jsonify({
                 "success": False,
-                "error": message
+                "error": result.stderr or "Failed to restart container"
             }), 500
 
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": "Timeout waiting for container to restart"
+        }), 500
     except Exception as e:
         return jsonify({
             "success": False,
