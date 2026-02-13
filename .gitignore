@@ -1,0 +1,39 @@
+# Runtime data
+data/
+backups/
+.reload-trigger
+demo-data/
+
+# Docker compose override
+docker-compose.override.yaml
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.env.backup
+.env.tmp
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Infisical (contains workspace ID)
+.infisical.json
+
+# AI context (personal)
+.protext/
+.archive/
+.gemini/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Ollama data
+ollama-data/
+modelfiles/

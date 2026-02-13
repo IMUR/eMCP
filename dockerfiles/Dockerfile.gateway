@@ -1,0 +1,18 @@
+FROM mcpjungle/mcpjungle:latest-stdio
+
+# Switch to root to install packages
+USER root
+
+# Install Docker CLI
+RUN apt-get update && \
+    apt-get install -y docker.io && \
+    rm -rf /var/lib/apt/lists/*
+
+# Switch back to the default user (if known, otherwise keep root or check base image)
+# The base image likely runs as 'mcpjungle' or similar, but let's verify first.
+# For now, we'll leave it as root or switch back if we know the user.
+# Based on previous logs, the user seems to be 'mcpjungle' (uid 1000 usually).
+# Let's assume we need to switch back to the user defined in the base image if it's not root.
+# However, to run docker commands, the user needs to be in the docker group or have access to the socket.
+# We are mounting the socket, so we might need to ensure the user has permissions.
+# Often, adding the user to the docker group (gid of the host socket) is needed.

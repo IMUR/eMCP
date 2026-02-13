@@ -1,0 +1,101 @@
+# eMCP Docker Compose
+# Tool Access Broker for MCP systems
+
+services:
+  db:
+    image: postgres:17
+    container_name: emcp-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-emcp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emcp}
+      POSTGRES_DB: emcp
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-emcp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - emcp-network
+
+  emcp-server:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.gateway
+    image: emcp:gateway
+    container_name: emcp-server
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-emcp}:${POSTGRES_PASSWORD:-emcp}@db:5432/emcp
+      SERVER_MODE: ${SERVER_MODE:-development}
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./configs:/configs:ro
+      - ./groups:/groups
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - emcp-network
+
+  emcp-manager:
+    build:
+      context: ./emcp-manager
+      dockerfile: Dockerfile
+    container_name: emcp-manager
+    ports:
+      - "5010:5000"
+    environment:
+      - MCPJUNGLE_API=http://emcp-server:8080
+      - EMCP_INFISICAL_SECRET=${EMCP_INFISICAL_SECRET:-}
+      - INFISICAL_WORKSPACE_ID=${INFISICAL_WORKSPACE_ID:-}
+      - INFISICAL_API_URL=${INFISICAL_API_URL:-https://app.infisical.com}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-prod}
+      - COMPOSE_DIR=/emcp
+    volumes:
+      - ./groups:/groups:rw
+      - ./data:/data:rw
+      - ./configs:/configs:rw
+      - .:/emcp:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - emcp-server
+    restart: unless-stopped
+    networks:
+      - emcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/current"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Demo MCP Server - no API keys required
+  # Provides filesystem tools for demonstration
+  filesystem-mcp:
+    image: node:22-slim
+    container_name: filesystem-mcp
+    command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/demo"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./demo-data:/demo:ro
+    networks:
+      - emcp-network
+    restart: unless-stopped
+
+  # Add your own MCP servers below.
+  # See examples/ directory for common server configurations.
+  # Each server needs: stdin_open, tty, networks
+
+volumes:
+  db_data:
+
+networks:
+  emcp-network:
+    driver: bridge

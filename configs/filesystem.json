@@ -1,0 +1,14 @@
+{
+    "name": "filesystem",
+    "transport": "stdio",
+    "description": "Demo filesystem MCP server (no API keys required)",
+    "command": "docker",
+    "args": [
+        "exec",
+        "-i",
+        "filesystem-mcp",
+        "npx",
+        "@modelcontextprotocol/server-filesystem",
+        "/demo"
+    ]
+}
