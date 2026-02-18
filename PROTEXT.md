@@ -8,16 +8,16 @@ Tool Access Broker for MCP systems. Filters which tools AI agents can access to 
 
 ## Current State
 <!-- marker:state -->
-Active: v1.0.0 release preparation | Blocked: None | Recent: Initial public release committed
+Active: VM test validation in progress | Blocked: Step 4 awaits first CI push | Recent: Steps 1-3, 5 completed
 <!-- /marker:state -->
 
 ## Hot Context
 <!-- marker:hot -->
-- RELEASE_PREP.md has 7-step checklist — Steps 1-2 are code fixes, Steps 3-7 are CI/publish
-- Makefile `register` and `status` targets still use `python3` — must switch to `jq`
-- `make up` doesn't auto-create `demo-data/` — new users will hit mount failures
-- Dockerfile.gateway has leftover dev comments — needs cleanup before release
-- TEST_VALIDATION.md has 12 phases — must pass on clean VM before tagging v1.0.0
+- Steps 1, 2, 3, 5 done — Step 4 (switch compose to ghcr.io images) blocked on first CI tag push
+- VM test validation running from trtr — awaiting results
+- `infisical_client.py` may be dead code — check before tagging v1.0.0
+- CI workflow builds on main push, publishes only on `v*` tag — confirm OWNER=imur matches GitHub account
+- README, CONTRIBUTING, CLAUDE.md all updated to reflect new `make dev` and `jq` dep
 <!-- /marker:hot -->
 
 ## Scope Signals
@@ -35,5 +35,5 @@ Active: v1.0.0 release preparation | Blocked: None | Recent: Initial public rele
 
 ## Handoff
 <!-- marker:handoff -->
-Last: Initial public release committed to main | Next: Execute RELEASE_PREP.md Step 1 (fix rough edges) | Caution: Do not tag v1.0.0 until TEST_VALIDATION passes on clean VM
+Last: Steps 1-3, 5 completed; docs updated; VM test initiated from trtr | Next: Await VM test results, then Step 4 + tag | Caution: Do not apply Step 4 until CI has pushed images to ghcr.io
 <!-- /marker:handoff -->

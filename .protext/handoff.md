@@ -1,29 +1,31 @@
 # Session Handoff
-> Updated: 2026-02-18T00:00
+> Updated: 2026-02-18T12:00
 
 ## Last Session
 **Completed:**
-- Initial public release committed (a43b73e)
-- Stripped personal server references and Infisical assumptions
-- Replaced scripts/ with Makefile, added TEST_VALIDATION.md
-- Added RELEASE_PREP.md with step-by-step v1.0.0 path
+- RELEASE_PREP Step 1: Makefile rough edges (python3→jq, demo-data auto-create)
+- RELEASE_PREP Step 2: Dockerfile.gateway cleaned of dev comments
+- RELEASE_PREP Step 3: GitHub Actions CI workflow (docker-publish.yml)
+- RELEASE_PREP Step 5: docker-compose.dev.yaml + `make dev` target
+- Doc updates: README, CONTRIBUTING, CLAUDE.md all reflect new targets and jq dep
+- Protext initialized for project
 
 **In Progress:**
-- None — release prep steps not yet started
+- VM test validation running from trtr (TEST_VALIDATION.md 12 phases)
 
 **Deferred:**
-- RELEASE_PREP Step 1: Fix Makefile rough edges (python3→jq, demo-data creation)
-- RELEASE_PREP Step 2: Clean Dockerfile.gateway comments
-- RELEASE_PREP Step 3: Add GitHub Actions CI/CD
-- RELEASE_PREP Steps 4-7: Pre-built images, dev override, test, tag
+- RELEASE_PREP Step 4: Switch docker-compose.yaml to ghcr.io images (blocked — needs first CI tag push)
+- RELEASE_PREP Step 6: Full clean VM pass (in progress on trtr)
+- RELEASE_PREP Step 7: Update CHANGELOG date, tag v1.0.0, create GitHub Release
 
 ## Cautions
-- Do NOT tag v1.0.0 until TEST_VALIDATION.md passes on a clean VM
-- `make register` and `make status` will fail on systems without python3
-- `docker-compose.yaml` still uses local `build:` — switch to ghcr.io images only after first CI push
-- Dockerfile.gateway has unprofessional dev comments in public repo
+- Do NOT apply Step 4 until CI has pushed images to ghcr.io (requires a `v*` tag push first)
+- `infisical_client.py` in emcp-manager/ may be dead code — verify before tagging
+- CI workflow hardcodes `OWNER: imur` — confirm this matches the GitHub account
+- CHANGELOG.md date still says 2026-02-13 — update when tagging
 
 ## Agent Notes
-The RELEASE_PREP.md is comprehensive and well-ordered. Steps 1-2 are safe local edits.
-Step 3 (CI) requires the GitHub repo to exist at github.com/IMUR/eMCP. Steps 4-5 depend
-on Step 3 completing successfully. Step 6 (clean VM test) is the gate before tagging.
+Steps 1-2 were clean edits. Step 3 CI workflow builds both images in parallel; only
+publishes on `v*` tags. Step 5 dev override uses `--build` flag so local changes are
+always picked up. The VM agent on trtr loaded Protext successfully and is walking
+through TEST_VALIDATION.md phase by phase.
