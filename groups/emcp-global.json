@@ -1,5 +1,5 @@
 {
-    "name": "emcp-global",
-    "description": "Default global tool group for eMCP",
-    "included_tools": []
+  "name": "emcp-global",
+  "description": "Default global tool group for eMCP",
+  "included_tools": []
 }

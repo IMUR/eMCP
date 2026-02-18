@@ -385,7 +385,7 @@ def api_update_group():
 def api_get_current():
     """API endpoint to get current eMCP group selection"""
     try:
-        return jsonify({"success": True, "tools": _get_current_tools()})
+        return jsonify({"success": True, "group": DEFAULT_GROUP, "tools": _get_current_tools()})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

@@ -7,6 +7,7 @@ End-to-end test procedure for validating eMCP on a clean system. Run this in a d
 ## Prerequisites
 
 A fresh Linux VM (Debian/Ubuntu recommended) with:
+
 - 2+ GB RAM
 - 10 GB disk
 - Internet access
@@ -25,10 +26,12 @@ newgrp docker
 ```
 
 **Verify:**
+
 ```bash
 docker --version
 docker compose version
 ```
+
 **Pass:** Both commands return version numbers.
 
 ### 1.2 Install Git
@@ -46,9 +49,11 @@ cd eMCP
 ```
 
 **Verify:**
+
 ```bash
 ls docker-compose.yaml emcp-manager/app.py configs/filesystem.json
 ```
+
 **Pass:** All three files exist.
 
 ---
@@ -62,15 +67,18 @@ cp .env.example .env
 ```
 
 Edit `.env` — set a real password:
+
 ```
 POSTGRES_USER=emcp
 POSTGRES_PASSWORD=testpass123
 ```
 
 **Verify:**
+
 ```bash
 cat .env | grep -c '='
 ```
+
 **Pass:** Returns `2` (both variables present).
 
 ### 2.2 Create Demo Data
@@ -92,9 +100,11 @@ make up
 ```
 
 **Verify:**
+
 ```bash
 docker compose ps
 ```
+
 **Pass:** Four containers running: `emcp-db`, `emcp-server`, `emcp-manager`, `filesystem-mcp`. All show status `Up` or `running`.
 
 ### 3.2 Wait for Healthy State
@@ -168,7 +178,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:5010/
 ### 5.2 Tools API
 
 ```bash
-curl -s http://localhost:5010/api/tools | jq 'keys'
+curl -s http://localhost:5010/api/tools | jq '.servers | keys'
 ```
 
 **Pass:** Returns a JSON object with server names as keys (should include `filesystem`).
@@ -186,6 +196,7 @@ curl -s http://localhost:5010/api/current | jq '.group'
 Open `http://<vm-ip>:5010` in a browser.
 
 **Check:**
+
 - [ ] Dashboard loads without errors
 - [ ] Tool list shows filesystem server tools
 - [ ] Tools can be toggled on/off via checkboxes
@@ -230,9 +241,17 @@ cat groups/emcp-global.json | jq '.included_tools'
 ### 6.4 Group MCP Endpoint
 
 ```bash
+# Initialize a session first (MCP Streamable HTTP requires this)
+SESSION_ID=$(curl -s http://localhost:8090/v0/groups/emcp-global/mcp -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' \
+  -D - -o /dev/null 2>&1 | grep -i 'mcp-session-id' | awk '{print $2}' | tr -d '\r')
+
+# List tools using the session
 curl -s http://localhost:8090/v0/groups/emcp-global/mcp -X POST \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools | length'
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq '.result.tools | length'
 ```
 
 **Pass:** Returns the number of tools in the group (should match the tools you enabled).
@@ -289,6 +308,7 @@ docker exec emcp-server /mcpjungle register -c /configs/filesystem2.json
 ```
 
 **Verify:**
+
 ```bash
 curl -s http://localhost:5010/api/tools | jq 'keys'
 ```
@@ -304,6 +324,7 @@ rm configs/filesystem2.json
 ```
 
 **Verify:**
+
 ```bash
 curl -s http://localhost:5010/api/tools | jq 'keys'
 ```
@@ -321,6 +342,7 @@ make down
 ```
 
 **Verify:**
+
 ```bash
 docker compose ps
 ```
@@ -374,6 +396,7 @@ cd ..
 ```
 
 **Verify:**
+
 ```bash
 systemctl status emcp-reload.path
 ```
@@ -388,6 +411,7 @@ sleep 5
 ```
 
 **Verify:**
+
 ```bash
 journalctl -u emcp-reload.service --since "1 minute ago" --no-pager
 ```
@@ -403,6 +427,7 @@ cd ..
 ```
 
 **Verify:**
+
 ```bash
 systemctl status emcp-reload.path 2>&1
 ```
@@ -464,7 +489,10 @@ grep -rn 'password\|secret\|token\|key' . \
 ### 11.2 .env Permissions
 
 ```bash
+# Linux:
 stat -c '%a' .env
+# macOS:
+stat -f '%A' .env
 ```
 
 **Pass:** Returns `600` or `644`.
@@ -516,5 +544,5 @@ rm -rf eMCP
 | 11 | Security Checks | |
 | 12 | Cleanup | |
 
-**Tested on:** _(OS, Docker version, date)_
-**Result:** _(PASS / FAIL — list failures)_
+**Tested on:** *(OS, Docker version, date)*
+**Result:** *(PASS / FAIL — list failures)*
