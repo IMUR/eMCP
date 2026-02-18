@@ -80,41 +80,16 @@ http://<host>:<gateway-port>/v0/groups/emcp-global/mcp
 
 ## Troubleshooting
 
-### Tools not appearing
-Run `make register`. This deregisters and re-registers all server configs. If an MCP server container restarted while the gateway was running, its tools silently stop being served. Re-registration fixes this.
+Run the script that matches what you see:
 
-### Gateway not ready
-Check if the gateway container is running and healthy:
-```bash
-docker compose ps emcp-server
-docker compose logs emcp-server --tail 20
-```
+| Symptom | Script |
+|---------|--------|
+| "I see no tools" / tools disappeared | `./skill/scripts/no-tools.sh` |
+| "It won't start" / make up fails | `./skill/scripts/wont-start.sh` |
+| "My agent can't connect" | `./skill/scripts/cant-connect.sh` |
+| Container shows unhealthy | `./skill/scripts/fix-unhealthy.sh` |
 
-### Port conflict
-Run the port check script:
-```bash
-./skill/scripts/check-ports.sh
-```
-If ports are taken, add overrides to `.env`:
-```env
-EMCP_GATEWAY_PORT=8091
-EMCP_MANAGER_PORT=5011
-EMCP_DB_PORT=5433
-```
-Then restart: `make down && make up`
-
-### Manager shows unhealthy but works fine
-The healthcheck uses Python's urllib inside the container. If it reports unhealthy but the web UI loads at the manager URL, the container is functional. Check with:
-```bash
-curl -s http://localhost:${EMCP_MANAGER_PORT:-5010}/api/current | jq .
-```
-
-### Containers from Web UI not cleaned up
-Servers added via the Web UI modify `docker-compose.yaml`. Use:
-```bash
-make clean
-```
-This runs `docker compose down -v --remove-orphans` which catches dynamically-added containers.
+Each script detects the root cause and applies the fix automatically. Run `./skill/scripts/diagnose.sh` to collect full diagnostic output if the above don't resolve the issue.
 
 ## Key Files
 
@@ -129,5 +104,11 @@ This runs `docker compose down -v --remove-orphans` which catches dynamically-ad
 
 ## Scripts
 
-- `skill/scripts/check-ports.sh` — Detect port conflicts before installation
-- `skill/scripts/diagnose.sh` — Collect diagnostic info for troubleshooting
+| Script | Purpose |
+|--------|---------|
+| `check-ports.sh` | Pre-install: detect port conflicts, suggest overrides |
+| `wont-start.sh` | Fix: missing dependencies, .env, port conflicts |
+| `no-tools.sh` | Fix: tools disappeared or never appeared |
+| `cant-connect.sh` | Fix: agent can't reach eMCP, prints correct URLs |
+| `fix-unhealthy.sh` | Fix: unhealthy containers, restarts and re-registers |
+| `diagnose.sh` | Info: collect full diagnostic output |
