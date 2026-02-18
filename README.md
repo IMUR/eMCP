@@ -12,9 +12,7 @@ AI Agent → eMCP Gateway → MCP Servers
 
 ```bash
 git clone https://github.com/IMUR/eMCP.git && cd eMCP
-cp .env.example .env    # Set POSTGRES_USER and POSTGRES_PASSWORD
-make up                 # Start all services
-make register           # Register the demo server
+make up
 ```
 
 Open **<http://localhost:5010>** — toggle tools on/off in the web UI.
@@ -38,8 +36,9 @@ Full docs at [docs/](docs/) or run `make docs` to serve locally.
 
 ```
 make help       Show all targets
-make up         Start all services
+make up         Start all services (auto-registers configs)
 make down       Stop all services
+make dev        Build and start locally (for development)
 make status     Service health + tool count
 make register   Re-register all server configs
 make clean      Remove containers, volumes, data

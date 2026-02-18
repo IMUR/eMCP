@@ -9,7 +9,7 @@ eMCP is a Tool Access Broker that filters which MCP (Model Context Protocol) too
 ## Commands
 
 ```bash
-make up         # Start all services
+make up         # Start all services (auto-registers configs)
 make dev        # Start with locally built images (for development)
 make down       # Stop all services
 make logs       # Tail gateway logs
@@ -20,9 +20,9 @@ make help       # Show all targets
 
 ## Secret Management
 
-Secrets are stored in `.env` (never committed). Copy `.env.example` and fill in values.
+Secrets are stored in `.env` (never committed). `make up` auto-creates from `.env.example` if missing.
 
-Required: `POSTGRES_USER`, `POSTGRES_PASSWORD`
+Optional: `POSTGRES_USER`, `POSTGRES_PASSWORD` (defaults to `emcp`/`emcp`)
 
 Add MCP server secrets as needed (e.g., API keys for servers you add).
 
@@ -62,7 +62,7 @@ See `examples/README.md` for details.
 
 ### MCPJungle Registration
 
-Config files in `configs/` are NOT auto-discovered. Servers must be registered:
+Config files in `configs/` are auto-registered on `make up`. For manual operations:
 
 ```bash
 docker exec emcp-server /mcpjungle register -c /configs/<name>.json

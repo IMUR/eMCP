@@ -3,10 +3,17 @@
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-up: .env ## Start all services
+up: ## Start all services
+	@[ -f .env ] || cp .env.example .env
 	@mkdir -p demo-data
 	@[ -f demo-data/readme.txt ] || echo "eMCP demo filesystem" > demo-data/readme.txt
 	docker compose up -d
+	@printf "  Waiting for gateway..."
+	@until docker exec emcp-server curl -sf http://localhost:8080/api/v0/tools > /dev/null 2>&1; do sleep 2; printf "."; done
+	@echo " ready"
+	@$(MAKE) --no-print-directory register
+	@echo ""
+	@docker compose ps --format "table {{.Name}}\t{{.Status}}"
 	@echo ""
 	@echo "  Web UI:   http://localhost:$${EMCP_MANAGER_PORT:-5010}"
 	@echo "  Gateway:  http://localhost:$${EMCP_GATEWAY_PORT:-8090}"
@@ -31,7 +38,7 @@ ps: ## List running containers
 
 register: ## Re-register all configs with MCPJungle
 	@command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install: apt-get install jq / brew install jq"; exit 1; }
-	@echo "Re-registering all server configs..."
+	@echo "Registering server configs..."
 	@for f in configs/*.json; do \
 		name=$$(jq -r '.name' $$f); \
 		echo "  $$name"; \
@@ -39,18 +46,18 @@ register: ## Re-register all configs with MCPJungle
 		docker exec emcp-server /mcpjungle register -c /configs/$$(basename $$f); \
 	done
 	@echo "Done."
-	@docker exec emcp-server /mcpjungle list servers
 
-.env:
-	@echo "No .env file found. Run:"
-	@echo "  cp .env.example .env"
-	@echo "  # Edit .env with your POSTGRES_USER and POSTGRES_PASSWORD"
-	@exit 1
-
-dev: .env ## Start with locally built images (for development)
+dev: ## Start with locally built images (for development)
+	@[ -f .env ] || cp .env.example .env
 	@mkdir -p demo-data
 	@[ -f demo-data/readme.txt ] || echo "eMCP demo filesystem" > demo-data/readme.txt
 	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d --build
+	@printf "  Waiting for gateway..."
+	@until docker exec emcp-server curl -sf http://localhost:8080/api/v0/tools > /dev/null 2>&1; do sleep 2; printf "."; done
+	@echo " ready"
+	@$(MAKE) --no-print-directory register
+	@echo ""
+	@docker compose ps --format "table {{.Name}}\t{{.Status}}"
 	@echo ""
 	@echo "  Web UI:   http://localhost:$${EMCP_MANAGER_PORT:-5010}"
 	@echo "  Gateway:  http://localhost:$${EMCP_GATEWAY_PORT:-8090}"
