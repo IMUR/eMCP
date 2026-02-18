@@ -22,6 +22,10 @@ __pycache__/
 .vscode/
 .idea/
 
+# Protext context (session-local)
+.protext/
+PROTEXT.md
+
 # OS files
 .DS_Store
 Thumbs.db

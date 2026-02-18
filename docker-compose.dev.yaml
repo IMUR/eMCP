@@ -1,0 +1,15 @@
+# Development override — restores local build for emcp-manager and emcp-server
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+
+services:
+  emcp-server:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.gateway
+    image: emcp:gateway
+
+  emcp-manager:
+    build:
+      context: ./emcp-manager
+      dockerfile: Dockerfile
+    image: emcp:manager
