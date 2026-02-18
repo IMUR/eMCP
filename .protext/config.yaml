@@ -1,0 +1,17 @@
+# Protext Configuration
+
+# Extraction behavior
+extraction_mode: suggest  # suggest | auto | confirm
+token_budget: 2000        # Max tokens per session
+
+# Handoff settings
+handoff_ttl_hours: 48     # Legacy field, no longer enforced
+
+# Active scope (updated by protext scope command)
+active_scope: dev
+
+# Feature flags
+features:
+  auto_handoff_capture: false  # Handoff is user-initiated only
+  token_warnings: true
+  scope_switching: true

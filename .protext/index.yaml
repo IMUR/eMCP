@@ -1,0 +1,45 @@
+# Protext Extraction Index
+# Max 20 extractions. Triggers are keyword hints (suggest-mode default).
+
+extractions:
+  release-prep:
+    source: RELEASE_PREP.md
+    triggers: [release, v1.0.0, tag, publish, ghcr, ci, docker-publish]
+    summary: "7-step release checklist: fix edges, clean Dockerfile, add CI, switch to pre-built images, dev override, test, tag"
+    tokens: ~3000
+
+  test-validation:
+    source: TEST_VALIDATION.md
+    triggers: [test, validate, phase, clean-vm, verification, pass, fail]
+    summary: "12-phase end-to-end validation: environment, config, first start, demo server, web UI, groups, resilience, security"
+    tokens: ~2000
+
+  adding-servers:
+    source: docs/adding-servers.md
+    triggers: [add, server, provision, register, config, mcp-server]
+    summary: "How to add MCP servers manually or via web UI"
+    tokens: ~500
+
+  changelog:
+    source: CHANGELOG.md
+    triggers: [changelog, version, history, changes, release-notes]
+    summary: "Version history and release notes"
+    tokens: ~200
+
+  compose:
+    source: docker-compose.yaml
+    triggers: [docker, compose, container, service, port, volume, network]
+    summary: "Docker Compose stack: db, emcp-server, emcp-manager, filesystem-mcp"
+    tokens: ~400
+
+  manager-app:
+    source: emcp-manager/app.py
+    triggers: [flask, web-ui, api, manager, endpoint, route, toggle]
+    summary: "Flask web UI and API for tool selection, server provisioning"
+    tokens: ~3000
+
+  examples:
+    source: examples/README.md
+    triggers: [example, tutorial, howto, getting-started]
+    summary: "Example configurations and server setup guides"
+    tokens: ~400
