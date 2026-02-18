@@ -25,15 +25,14 @@ eMCP Gateway (MCPJungle)     <-- Aggregates servers, filters by group
 
 ## Quick Start
 
+**Prerequisites:** Docker, Docker Compose, `jq`, `make`
+
 ```bash
 git clone https://github.com/IMUR/eMCP.git
 cd eMCP
 
 cp .env.example .env
 # Edit .env — set POSTGRES_USER and POSTGRES_PASSWORD
-
-mkdir -p demo-data
-echo "eMCP is running" > demo-data/readme.txt
 
 make up
 ```
@@ -99,6 +98,7 @@ sudo ./install.sh
 make help       Show all targets
 make up         Start all services
 make down       Stop all services
+make dev        Start with locally built images (for development)
 make restart    Restart all services
 make logs       Tail gateway logs
 make status     Service health + tool count

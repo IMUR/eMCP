@@ -5,7 +5,7 @@
 1. Fork the repository
 2. Clone your fork
 3. `cp .env.example .env` and edit
-4. `docker compose up -d`
+4. `make dev` (builds images locally)
 5. Create a branch, make changes, open a PR
 
 ## Development

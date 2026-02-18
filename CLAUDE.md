@@ -9,11 +9,12 @@ eMCP is a Tool Access Broker that filters which MCP (Model Context Protocol) too
 ## Commands
 
 ```bash
-make up         # Start all services
+make up         # Start all services (pulls pre-built images)
+make dev        # Start with locally built images (for development)
 make down       # Stop all services
 make logs       # Tail gateway logs
 make status     # Service health + tool count
-make register   # Re-register all configs with MCPJungle
+make register   # Re-register all configs with MCPJungle (requires jq)
 make help       # Show all targets
 ```
 
