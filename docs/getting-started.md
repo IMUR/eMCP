@@ -22,37 +22,28 @@ That's it. This will:
 4. Register the demo server's 14 tools
 5. Print container status and URLs
 
-Open **<http://localhost:5010>** to access the web UI.
-
-### Custom Credentials
-
-By default, the database uses `emcp`/`emcp`. To set your own credentials, edit `.env` before running `make up`:
-
-```bash
-cp .env.example .env
-# Edit POSTGRES_USER and POSTGRES_PASSWORD
-make up
-```
+Open **<http://localhost:3701>** to access the web UI.
 
 ### Custom Ports
 
-If the default ports (5010, 8090, 5432) conflict with other services, add overrides to `.env`:
+If the default ports (3700, 3701) conflict with other services, add overrides to `.env`:
 
 ```env
-EMCP_MANAGER_PORT=5011
-EMCP_GATEWAY_PORT=8091
-EMCP_DB_PORT=5433
+EMCP_GATEWAY_PORT=3710
+EMCP_MANAGER_PORT=3711
 ```
+
+Then: `make down && make up`
 
 ## Connect Your AI Agent
 
 Point your MCP client to:
 
 ```
-http://localhost:8090/v0/groups/emcp-global/mcp
+http://localhost:3700/v0/groups/emcp-global/mcp
 ```
 
-This is the MCP Streamable HTTP endpoint for the default `emcp-global` group.
+This is the MCP Streamable HTTP endpoint for the default `emcp-global` group. See [Connect Your Agent](connect.md) for platform-specific setup.
 
 ## Make Targets
 

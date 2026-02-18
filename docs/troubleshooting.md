@@ -34,12 +34,11 @@ If an MCP server container restarted while the gateway was still running, its to
 3. `.env` exists? If not: `cp .env.example .env`
 4. Ports free? Check with `./skill/scripts/check-ports.sh`
 
-If ports 5010, 8090, or 5432 are taken by another service, add overrides to `.env`:
+If ports 3700 or 3701 are taken, add overrides to `.env`:
 
 ```env
-EMCP_GATEWAY_PORT=8091
-EMCP_MANAGER_PORT=5011
-EMCP_DB_PORT=5433
+EMCP_GATEWAY_PORT=3710
+EMCP_MANAGER_PORT=3711
 ```
 
 Then: `make down && make up`
@@ -59,14 +58,14 @@ The MCP endpoint follows this pattern:
 http://<host>:<gateway-port>/v0/groups/emcp-global/mcp
 ```
 
-- **Local agent:** `http://localhost:8090/v0/groups/emcp-global/mcp`
+- **Local agent:** `http://localhost:3700/v0/groups/emcp-global/mcp`
 - **Remote agent (LAN):** Use the host's IP instead of `localhost`
 - **Remote agent (Tailscale):** Use the Tailscale IP
 
 To add eMCP as an MCP source in Claude Code:
 
 ```bash
-claude mcp add --transport http emcp http://localhost:8090/v0/groups/emcp-global/mcp
+claude mcp add --transport http emcp http://localhost:3700/v0/groups/emcp-global/mcp
 ```
 
 ## Container shows unhealthy
@@ -81,7 +80,7 @@ claude mcp add --transport http emcp http://localhost:8090/v0/groups/emcp-global
 `emcp-manager` may report "unhealthy" even when it's fully functional. Verify by checking if the API responds:
 
 ```bash
-curl -s http://localhost:5010/api/current | jq .
+curl -s http://localhost:3701/api/current | jq .
 ```
 
 If that returns valid JSON, the container is fine — the healthcheck status is cosmetic.

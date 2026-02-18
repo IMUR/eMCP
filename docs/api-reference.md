@@ -1,8 +1,8 @@
 # API Reference
 
-eMCP exposes two sets of endpoints: the **Manager API** (port 5010) for administration, and the **Gateway API** (port 8090) for MCP protocol access.
+eMCP exposes two sets of endpoints: the **Manager API** (port 3701) for administration, and the **Gateway API** (port 3700) for MCP protocol access.
 
-## Manager API (port 5010)
+## Manager API (port 3701)
 
 ### Dashboard
 
@@ -126,7 +126,7 @@ Returns the active secret management method (`env_file` or `infisical`).
 
 ---
 
-## Gateway API (port 8090)
+## Gateway API (port 3700)
 
 ### MCP Protocol Endpoint
 
@@ -138,13 +138,13 @@ MCP Streamable HTTP endpoint. Requires session initialization:
 
 ```bash
 # Step 1: Initialize session
-SESSION_ID=$(curl -s http://localhost:8090/v0/groups/emcp-global/mcp \
+SESSION_ID=$(curl -s http://localhost:3700/v0/groups/emcp-global/mcp \
   -X POST -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' \
   -D - -o /dev/null 2>&1 | grep -i 'mcp-session-id' | awk '{print $2}' | tr -d '\r')
 
 # Step 2: List tools
-curl -s http://localhost:8090/v0/groups/emcp-global/mcp \
+curl -s http://localhost:3700/v0/groups/emcp-global/mcp \
   -X POST -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SESSION_ID" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'

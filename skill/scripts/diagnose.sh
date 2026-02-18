@@ -10,8 +10,8 @@ if [[ -f .env ]]; then
     source .env 2>/dev/null || true
 fi
 
-GATEWAY_PORT="${EMCP_GATEWAY_PORT:-8090}"
-MANAGER_PORT="${EMCP_MANAGER_PORT:-5010}"
+GATEWAY_PORT="${EMCP_GATEWAY_PORT:-3700}"
+MANAGER_PORT="${EMCP_MANAGER_PORT:-3701}"
 
 echo "eMCP Diagnostics"
 echo "================"

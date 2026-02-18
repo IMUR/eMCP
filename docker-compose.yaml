@@ -8,15 +8,13 @@ services:
     image: postgres:17
     container_name: emcp-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-emcp}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emcp}
+      POSTGRES_USER: emcp
+      POSTGRES_PASSWORD: emcp
       POSTGRES_DB: emcp
-    ports:
-      - "${EMCP_DB_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-emcp}"]
+      test: ["CMD-SHELL", "pg_isready -U emcp"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,10 +26,10 @@ services:
     image: ghcr.io/imur/emcp-server:latest
     container_name: emcp-server
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-emcp}:${POSTGRES_PASSWORD:-emcp}@db:5432/emcp
+      DATABASE_URL: postgres://emcp:emcp@db:5432/emcp
       SERVER_MODE: ${SERVER_MODE:-development}
     ports:
-      - "${EMCP_GATEWAY_PORT:-8090}:8080"
+      - "${EMCP_GATEWAY_PORT:-3700}:8080"
     volumes:
       - ./configs:/configs:ro
       - ./groups:/groups
@@ -47,7 +45,7 @@ services:
     image: ghcr.io/imur/emcp-manager:latest
     container_name: emcp-manager
     ports:
-      - "${EMCP_MANAGER_PORT:-5010}:5000"
+      - "${EMCP_MANAGER_PORT:-3701}:5000"
     environment:
       - MCPJUNGLE_API=http://emcp-server:8080
       - COMPOSE_DIR=/emcp

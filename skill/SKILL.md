@@ -23,16 +23,15 @@ Manage eMCP (Tool Access Broker for MCP systems) on any host. Handles installati
 ## Architecture
 
 ```
-AI Agent → eMCP Gateway (MCPJungle, port 8090) → MCP Servers
+AI Agent → eMCP Gateway (MCPJungle, port 3700) → MCP Servers
                 ↑
-          Web UI (port 5010)
-          PostgreSQL (port 5432)
+          Web UI (port 3701)
+          PostgreSQL (internal only, not exposed)
 ```
 
-All three ports are configurable via `.env`:
-- `EMCP_GATEWAY_PORT` (default: 8090)
-- `EMCP_MANAGER_PORT` (default: 5010)
-- `EMCP_DB_PORT` (default: 5432)
+Ports are configurable via `.env`:
+- `EMCP_GATEWAY_PORT` (default: 3700)
+- `EMCP_MANAGER_PORT` (default: 3701)
 
 ## Installation
 
@@ -97,7 +96,7 @@ Each script detects the root cause and applies the fix automatically. Run `./ski
 |------|---------|
 | `docker-compose.yaml` | Service definitions (pulls from ghcr.io) |
 | `docker-compose.dev.yaml` | Local build override for contributors |
-| `.env` | Credentials and port overrides |
+| `.env` | Port overrides and MCP server API keys |
 | `configs/*.json` | MCPJungle server registration configs |
 | `groups/emcp-global.json` | Default tool group (which tools are exposed) |
 | `Makefile` | All operational commands |

@@ -11,12 +11,12 @@ git clone https://github.com/IMUR/eMCP.git && cd eMCP
 make up
 ```
 
-Open **<http://localhost:5010>** to manage your tools.
+Open **<http://localhost:3701>** to manage your tools.
 
 Connect your AI agent to:
 
 ```
-http://localhost:8090/v0/groups/emcp-global/mcp
+http://localhost:3700/v0/groups/emcp-global/mcp
 ```
 
 ## How It Works

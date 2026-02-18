@@ -8,16 +8,16 @@ eMCP exposes a standard MCP Streamable HTTP endpoint. Any MCP-compatible client 
 http://<host>:<port>/v0/groups/emcp-global/mcp
 ```
 
-Default: `http://localhost:8090/v0/groups/emcp-global/mcp`
+Default: `http://localhost:3700/v0/groups/emcp-global/mcp`
 
-If you configured a custom gateway port in `.env`, replace `8090` with your `EMCP_GATEWAY_PORT` value. For remote access, replace `localhost` with the host's IP or Tailscale address.
+If you configured a custom gateway port in `.env`, replace `3700` with your `EMCP_GATEWAY_PORT` value. For remote access, replace `localhost` with the host's IP or Tailscale address.
 
 ---
 
 ## Claude Code
 
 ```bash
-claude mcp add --transport http emcp http://localhost:8090/v0/groups/emcp-global/mcp
+claude mcp add --transport http emcp http://localhost:3700/v0/groups/emcp-global/mcp
 ```
 
 To remove:
@@ -34,7 +34,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 {
   "mcpServers": {
     "emcp": {
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -50,7 +50,7 @@ Add to `.cursor/mcp.json` in your project root or `~/.cursor/mcp.json` globally:
 {
   "mcpServers": {
     "emcp": {
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -64,7 +64,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "emcp": {
-      "serverUrl": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "serverUrl": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -79,7 +79,7 @@ Add to `.vscode/mcp.json` in your project:
   "servers": {
     "emcp": {
       "type": "http",
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -92,7 +92,7 @@ Or add to `settings.json`:
   "github.copilot.chat.mcp.servers": {
     "emcp": {
       "type": "http",
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -101,7 +101,7 @@ Or add to `settings.json`:
 ## Gemini CLI
 
 ```bash
-gemini mcp add --transport http emcp http://localhost:8090/v0/groups/emcp-global/mcp
+gemini mcp add --transport http emcp http://localhost:3700/v0/groups/emcp-global/mcp
 ```
 
 ## OpenCode
@@ -113,7 +113,7 @@ Add to `~/.config/opencode/config.json`:
   "mcpServers": {
     "emcp": {
       "type": "http",
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -127,7 +127,7 @@ Add to `~/.codex/config.json`:
 {
   "mcpServers": {
     "emcp": {
-      "url": "http://localhost:8090/v0/groups/emcp-global/mcp"
+      "url": "http://localhost:3700/v0/groups/emcp-global/mcp"
     }
   }
 }
@@ -141,8 +141,8 @@ eMCP uses MCP Streamable HTTP transport. Any client that supports this transport
 
 For agents running on a different machine:
 
-- **LAN**: Use the host's local IP (e.g., `http://192.168.1.100:8090/v0/groups/emcp-global/mcp`)
-- **Tailscale/VPN**: Use the Tailscale IP (e.g., `http://100.64.0.2:8090/v0/groups/emcp-global/mcp`)
+- **LAN**: Use the host's local IP (e.g., `http://192.168.1.100:3700/v0/groups/emcp-global/mcp`)
+- **Tailscale/VPN**: Use the Tailscale IP (e.g., `http://100.64.0.2:3700/v0/groups/emcp-global/mcp`)
 - **Internet**: Put a reverse proxy with TLS in front of the gateway
 
 Run `./skill/scripts/cant-connect.sh` to print all reachable URLs for your host.

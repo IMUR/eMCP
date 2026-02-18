@@ -15,9 +15,9 @@ git clone https://github.com/IMUR/eMCP.git && cd eMCP
 make up
 ```
 
-Open **<http://localhost:5010>** — toggle tools on/off in the web UI.
+Open **<http://localhost:3701>** — toggle tools on/off in the web UI.
 
-Connect your AI agent to: `http://localhost:8090/v0/groups/emcp-global/mcp`
+Connect your AI agent to: `http://localhost:3700/v0/groups/emcp-global/mcp`
 
 ## Documentation
 

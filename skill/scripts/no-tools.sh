@@ -5,7 +5,7 @@
 set -euo pipefail
 
 if [[ -f .env ]]; then source .env 2>/dev/null || true; fi
-GATEWAY_PORT="${EMCP_GATEWAY_PORT:-8090}"
+GATEWAY_PORT="${EMCP_GATEWAY_PORT:-3700}"
 GATEWAY="http://localhost:${GATEWAY_PORT}"
 
 echo "Checking why tools aren't appearing..."
@@ -45,7 +45,7 @@ GROUP_COUNT=$(jq '.included_tools | length' groups/emcp-global.json 2>/dev/null 
 if [[ "$GROUP_COUNT" -eq 0 ]]; then
     echo "FOUND: ${TOOL_COUNT} tools registered, but none selected in emcp-global group."
     echo "FIX:   Open the web UI and toggle tools on, or edit groups/emcp-global.json."
-    echo "       Web UI: http://localhost:${EMCP_MANAGER_PORT:-5010}"
+    echo "       Web UI: http://localhost:${EMCP_MANAGER_PORT:-3701}"
     exit 0
 fi
 

@@ -22,7 +22,7 @@ make help       # Show all targets
 
 Secrets are stored in `.env` (never committed). `make up` auto-creates from `.env.example` if missing.
 
-Optional: `POSTGRES_USER`, `POSTGRES_PASSWORD` (defaults to `emcp`/`emcp`)
+Add MCP server API keys here. Postgres credentials are hardcoded internally (db not exposed).
 
 Add MCP server secrets as needed (e.g., API keys for servers you add).
 
@@ -32,8 +32,8 @@ Add MCP server secrets as needed (e.g., API keys for servers you add).
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| MCPJungle Gateway | `emcp-server` container (port 8090) | Aggregates MCP servers, routes tool calls, manages groups |
-| eMCP Manager | `emcp-manager/app.py` (port 5010) | Flask web UI and API for tool selection |
+| MCPJungle Gateway | `emcp-server` container (port 3700) | Aggregates MCP servers, routes tool calls, manages groups |
+| eMCP Manager | `emcp-manager/app.py` (port 3701) | Flask web UI and API for tool selection |
 
 ### Group System
 
@@ -46,7 +46,7 @@ Add MCP server secrets as needed (e.g., API keys for servers you add).
 
 ### Via Web UI
 
-1. Open http://localhost:5010
+1. Open http://localhost:3701
 2. Click "Add MCP Server"
 3. Enter a GitHub repo URL, npm package, or Docker image
 4. Configure and provision

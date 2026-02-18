@@ -2,7 +2,7 @@
 
 ## Via Web UI
 
-1. Open **<http://localhost:5010>**
+1. Open **<http://localhost:3701>**
 2. Click **Add MCP Server**
 3. Enter a GitHub repo URL, npm package, or Docker image
 4. The detector auto-configures the server

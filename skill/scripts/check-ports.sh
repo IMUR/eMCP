@@ -10,9 +10,8 @@ if [[ -f .env ]]; then
     source .env 2>/dev/null || true
 fi
 
-GATEWAY_PORT="${EMCP_GATEWAY_PORT:-8090}"
-MANAGER_PORT="${EMCP_MANAGER_PORT:-5010}"
-DB_PORT="${EMCP_DB_PORT:-5432}"
+GATEWAY_PORT="${EMCP_GATEWAY_PORT:-3700}"
+MANAGER_PORT="${EMCP_MANAGER_PORT:-3701}"
 
 check_port() {
     local port="$1"
@@ -56,7 +55,6 @@ CONFLICTS=0
 
 check_port "$GATEWAY_PORT" "gateway" "EMCP_GATEWAY_PORT" || ((CONFLICTS++))
 check_port "$MANAGER_PORT" "manager" "EMCP_MANAGER_PORT" || ((CONFLICTS++))
-check_port "$DB_PORT" "database" "EMCP_DB_PORT" || ((CONFLICTS++))
 
 if [[ "$CONFLICTS" -gt 0 ]]; then
     echo "---"

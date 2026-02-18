@@ -5,7 +5,7 @@
 set -euo pipefail
 
 if [[ -f .env ]]; then source .env 2>/dev/null || true; fi
-GATEWAY_PORT="${EMCP_GATEWAY_PORT:-8090}"
+GATEWAY_PORT="${EMCP_GATEWAY_PORT:-3700}"
 
 echo "Checking container health..."
 echo ""
@@ -47,7 +47,7 @@ if [[ ${#UNHEALTHY[@]} -gt 0 ]]; then
     for CONTAINER in "${UNHEALTHY[@]}"; do
         # Special case: emcp-manager healthcheck is cosmetic
         if [[ "$CONTAINER" == "emcp-manager" ]]; then
-            MANAGER_PORT="${EMCP_MANAGER_PORT:-5010}"
+            MANAGER_PORT="${EMCP_MANAGER_PORT:-3701}"
             if curl -sf "http://localhost:${MANAGER_PORT}/api/current" >/dev/null 2>&1; then
                 echo "NOTE: emcp-manager reports unhealthy but API responds fine."
                 echo "      This is a known cosmetic issue with the healthcheck."

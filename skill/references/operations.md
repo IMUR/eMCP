@@ -6,11 +6,11 @@ Default ports and their environment variable overrides:
 
 | Service | Default | Container Port | Override Variable |
 |---------|---------|---------------|-------------------|
-| Gateway | 8090 | 8080 | `EMCP_GATEWAY_PORT` |
-| Manager | 5010 | 5000 | `EMCP_MANAGER_PORT` |
-| Database | 5432 | 5432 | `EMCP_DB_PORT` |
+| Gateway | 3700 | 8080 | `EMCP_GATEWAY_PORT` |
+| Manager | 3701 | 5000 | `EMCP_MANAGER_PORT` |
+| Database | — | 5432 (internal only) | — |
 
-Set overrides in `.env` before `make up`. The Makefile and docker-compose.yaml both read these variables.
+The database is not exposed to the host. It is only accessible within the Docker network. Set port overrides in `.env` before `make up`.
 
 ## Registration Lifecycle
 
@@ -45,14 +45,14 @@ For local development builds, use `make dev` which applies `docker-compose.dev.y
 
 ## API Endpoints
 
-### Gateway (emcp-server)
+### Gateway (emcp-server, default port 3700)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/v0/tools` | GET | List all registered tools |
 | `/v0/groups/{name}/mcp` | POST | MCP Streamable HTTP endpoint |
 
-### Manager (emcp-manager)
+### Manager (emcp-manager, default port 3701)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
