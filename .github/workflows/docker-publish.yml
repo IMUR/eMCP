@@ -45,7 +45,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./emcp-manager
-          dockerfile: ./emcp-manager/Dockerfile
+          file: ./emcp-manager/Dockerfile
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -83,7 +83,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: ./dockerfiles/Dockerfile.gateway
+          file: ./dockerfiles/Dockerfile.gateway
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
