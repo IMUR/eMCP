@@ -36,7 +36,7 @@ You add MCP servers. You choose which tools to expose. Your agent only sees what
 
 ## Documentation
 
-### Using eMCP
+### User Guide
 
 - [Getting Started](getting-started.md) — installation, configuration, custom ports
 - [Adding Servers](adding-servers.md) — connect MCP servers via web UI or CLI
@@ -45,10 +45,12 @@ You add MCP servers. You choose which tools to expose. Your agent only sees what
 
 ### Reference
 
-- [API Reference](api-reference.md) — manager and gateway endpoints
+- [API](api-reference.md) — manager and gateway endpoints
 - [Security](SECURITY.md) — secrets handling, deployment practices
+- [Changelog](changelog.md) — release history
 
-### Contributing
+### Development
 
 - [Contributing](contributing.md) — development setup, code style
-- [Changelog](changelog.md) — release history
+- [Validation](development/validation.md) — test procedures
+- [Release](development/release.md) — release checklist
