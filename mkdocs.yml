@@ -32,6 +32,10 @@ nav:
       - Adding Servers: adding-servers.md
       - Groups: groups.md
       - Troubleshooting: troubleshooting.md
+  - MCP:
+      - Connect Your Agent: connect.md
+  - Skill:
+      - eMCP Skill: skill.md
   - Reference:
       - API: api-reference.md
       - Security: SECURITY.md

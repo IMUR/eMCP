@@ -43,6 +43,14 @@ You add MCP servers. You choose which tools to expose. Your agent only sees what
 - [Groups](groups.md) — create tool sets for different workflows
 - [Troubleshooting](troubleshooting.md) — something not working? start here
 
+### MCP
+
+- [Connect Your Agent](connect.md) — Claude Code, Cursor, VS Code, Gemini, and more
+
+### Skill
+
+- [eMCP Skill](skill.md) — install the AI agent skill for automated operations
+
 ### Reference
 
 - [API](api-reference.md) — manager and gateway endpoints
