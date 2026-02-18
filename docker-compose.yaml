@@ -1,6 +1,8 @@
 # eMCP Docker Compose
 # Tool Access Broker for MCP systems
 
+name: emcp
+
 services:
   db:
     image: postgres:17
