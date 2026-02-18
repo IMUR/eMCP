@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emcp}
       POSTGRES_DB: emcp
     ports:
-      - "5432:5432"
+      - "${EMCP_DB_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-emcp}:${POSTGRES_PASSWORD:-emcp}@db:5432/emcp
       SERVER_MODE: ${SERVER_MODE:-development}
     ports:
-      - "8090:8080"
+      - "${EMCP_GATEWAY_PORT:-8090}:8080"
     volumes:
       - ./configs:/configs:ro
       - ./groups:/groups
@@ -52,7 +52,7 @@ services:
       dockerfile: Dockerfile
     container_name: emcp-manager
     ports:
-      - "5010:5000"
+      - "${EMCP_MANAGER_PORT:-5010}:5000"
     environment:
       - MCPJUNGLE_API=http://emcp-server:8080
       - COMPOSE_DIR=/emcp
