@@ -2,95 +2,37 @@
 
 **Tool Access Broker for MCP systems.** Filters which tools AI agents can access to reduce token costs and cognitive overhead.
 
-Every enabled MCP tool consumes tokens. eMCP sits between your AI agent and your MCP servers, letting you control exactly which tools are exposed through a web UI.
-
-## Architecture
-
 ```
-AI Agent
-    |
-    v
-eMCP Gateway (MCPJungle)     <-- Aggregates servers, filters by group
-    |         |
-    v         v
-  MCP       MCP              <-- Your MCP servers
- Server    Server
+AI Agent → eMCP Gateway → MCP Servers
+              ↑
+        Web UI (tool toggle)
 ```
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| `emcp-server` | 8090 | MCPJungle gateway - aggregates servers, routes tool calls |
-| `emcp-manager` | 5010 | Web UI for tool selection and server management |
-| `db` | 5432 | PostgreSQL for gateway state |
 
 ## Quick Start
 
-**Prerequisites:** Docker, Docker Compose, `jq`, `make`
-
 ```bash
-git clone https://github.com/IMUR/eMCP.git
-cd eMCP
-
-cp .env.example .env
-# Edit .env — set POSTGRES_USER and POSTGRES_PASSWORD
-
-make up
+git clone https://github.com/IMUR/eMCP.git && cd eMCP
+cp .env.example .env    # Set POSTGRES_USER and POSTGRES_PASSWORD
+make up                 # Start all services
+make register           # Register the demo server
 ```
 
-Open **http://localhost:5010** — the web UI shows available tools from the included demo server.
+Open **<http://localhost:5010>** — toggle tools on/off in the web UI.
 
-## Adding MCP Servers
+Connect your AI agent to: `http://localhost:8090/v0/groups/emcp-global/mcp`
 
-### Via Web UI
+## Documentation
 
-1. Open http://localhost:5010
-2. Click **Add MCP Server**
-3. Enter a GitHub repo URL, npm package, or Docker image
-4. Configure and provision
+Full docs at [docs/](docs/) or run `make docs` to serve locally.
 
-### Manually
-
-1. Add a service to `docker-compose.yaml`
-2. Create a config in `configs/<name>.json`
-3. `docker compose up -d <name>`
-4. `docker exec emcp-server /mcpjungle register -c /configs/<name>.json`
-
-See [`examples/README.md`](examples/README.md) for a complete walkthrough.
-
-## Group System
-
-Groups control which tools are exposed. Each group is a JSON file in `groups/`:
-
-```json
-{
-    "name": "my-group",
-    "description": "Tools for my workflow",
-    "included_tools": ["server__tool_name"]
-}
-```
-
-Access a group's MCP endpoint at: `http://localhost:8090/v0/groups/{group-name}/mcp`
-
-Manage groups via the web UI or by editing the JSON files directly.
-
-## Secret Management
-
-Secrets are stored in a `.env` file (never committed to git):
-
-```bash
-cp .env.example .env
-```
-
-The `.env` file is created with restricted permissions. Add API keys for any MCP servers you configure. See `.env.example` for the format.
-
-## Systemd Integration
-
-For automatic container reloads when adding servers via the web UI:
-
-```bash
-cd systemd
-sudo ./install.sh
-```
+| Topic | Link |
+|-------|------|
+| Setup & installation | [Getting Started](docs/getting-started.md) |
+| Adding MCP servers | [Adding Servers](docs/adding-servers.md) |
+| Tool groups | [Groups](docs/groups.md) |
+| API endpoints | [API Reference](docs/api-reference.md) |
+| Security | [Security](docs/SECURITY.md) |
+| Contributing | [Contributing](docs/contributing.md) |
 
 ## Make Targets
 
@@ -98,20 +40,10 @@ sudo ./install.sh
 make help       Show all targets
 make up         Start all services
 make down       Stop all services
-make dev        Start with locally built images (for development)
-make restart    Restart all services
-make logs       Tail gateway logs
 make status     Service health + tool count
-make register   Re-register all configs with MCPJungle
-make clean      Remove containers, volumes, runtime data
-```
-
-## API
-
-```bash
-curl http://localhost:5010/api/tools      # All available tools
-curl http://localhost:5010/api/current    # Current tool selection
-curl http://localhost:5010/api/servers    # Registered servers
+make register   Re-register all server configs
+make clean      Remove containers, volumes, data
+make docs       Serve documentation locally
 ```
 
 ## License

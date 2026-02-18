@@ -1,0 +1,50 @@
+site_name: eMCP Documentation
+site_description: Tool Access Broker for MCP systems
+site_url: https://imur.github.io/eMCP
+repo_url: https://github.com/IMUR/eMCP
+repo_name: IMUR/eMCP
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Adding Servers: adding-servers.md
+  - Groups: groups.md
+  - API Reference: api-reference.md
+  - Security: SECURITY.md
+  - Development:
+      - Testing: development/testing.md
+      - Validation: development/validation.md
+      - Release: development/release.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true

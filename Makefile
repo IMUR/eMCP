@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs register status ps clean dev
+.PHONY: help up down restart logs register status ps clean dev docs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -57,4 +57,8 @@ dev: .env ## Start with locally built images (for development)
 
 clean: ## Remove all containers, volumes, and runtime data
 	docker compose down -v
-	rm -rf data/ demo-data/ .reload-trigger
+	rm -rf data/ demo-data/
+
+docs: ## Serve documentation locally
+	@command -v mkdocs >/dev/null 2>&1 || { echo "Install mkdocs: pip install mkdocs-material"; exit 1; }
+	mkdocs serve
