@@ -70,7 +70,7 @@ Edit `.env` — set a real password:
 
 ```
 POSTGRES_USER=emcp
-POSTGRES_PASSWORD=testpass123
+POSTGRES_PASSWORD=<your-password>
 ```
 
 **Verify:**

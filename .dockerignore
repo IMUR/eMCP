@@ -1,0 +1,15 @@
+.git
+.github
+.archive
+.protext
+docs
+demo-data
+backups
+data
+*.md
+LICENSE
+mkdocs.yml
+TEST.md
+PROTEXT.md
+.env
+.env.*
