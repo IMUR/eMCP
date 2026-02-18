@@ -45,3 +45,4 @@ Open **<http://localhost:5010>** to manage your tools.
 - **Web UI** — toggle tools on/off, add servers, manage groups
 - **MCP Streamable HTTP** — standard MCP transport for any client
 - **Zero-config demo** — ships with a filesystem server, ready to use
+- **Dynamic provisioning** — add MCP servers through the web UI
