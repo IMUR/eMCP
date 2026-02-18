@@ -27,16 +27,19 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Adding Servers: adding-servers.md
-  - Groups: groups.md
-  - API Reference: api-reference.md
-  - Security: SECURITY.md
+  - User Guide:
+      - Getting Started: getting-started.md
+      - Adding Servers: adding-servers.md
+      - Groups: groups.md
+      - Troubleshooting: troubleshooting.md
+  - Reference:
+      - API: api-reference.md
+      - Security: SECURITY.md
+      - Changelog: changelog.md
   - Development:
+      - Contributing: contributing.md
       - Validation: development/validation.md
       - Release: development/release.md
-  - Contributing: contributing.md
-  - Changelog: changelog.md
 
 markdown_extensions:
   - admonition

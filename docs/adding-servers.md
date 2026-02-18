@@ -2,21 +2,22 @@
 
 ## Via Web UI
 
-1. Open http://localhost:5010
+1. Open **<http://localhost:5010>**
 2. Click **Add MCP Server**
 3. Enter a GitHub repo URL, npm package, or Docker image
 4. The detector auto-configures the server
-5. Enter any required environment variables
+5. Enter any required environment variables (stored in `.env`)
 6. Click **Provision**
 
-The manager communicates with Docker directly via the mounted socket to start new containers.
+The server starts automatically and its tools appear in the tool list.
 
-## Manually
+## Via Command Line
 
-### 1. Add Docker service
+### 1. Add the Docker service
+
+Add a service to `docker-compose.yaml`:
 
 ```yaml
-# In docker-compose.yaml under services:
 my-server:
   image: some-mcp-server:latest
   container_name: my-server
@@ -30,7 +31,13 @@ my-server:
   restart: unless-stopped
 ```
 
-### 2. Create config
+Add the API key to `.env`:
+
+```env
+MY_API_KEY=your_key_here
+```
+
+### 2. Create the registration config
 
 ```json
 // configs/my-server.json
@@ -52,7 +59,7 @@ docker exec emcp-server /mcpjungle register -c /configs/my-server.json
 
 ### 4. Select tools
 
-Open the web UI and add tools to your group, or edit `groups/emcp-global.json` directly.
+Open the web UI and toggle tools on, or edit `groups/emcp-global.json` directly.
 
 ## Removing a Server
 
@@ -62,9 +69,4 @@ docker compose rm -sf my-server
 rm configs/my-server.json
 ```
 
-## Troubleshooting
-
-- **Tools not appearing**: Run `make register` to re-register all servers
-- **Tools disappeared after a container restart**: If an MCP server container restarts while the gateway is still running, its tools may silently stop being served. Run `make register` to fix. This deregisters and re-registers all servers.
-- **Container not starting**: `docker compose logs my-server`
-- **Connection errors**: Ensure the server is on `emcp-network`
+If something isn't working after adding or removing a server, see [Troubleshooting](troubleshooting.md).

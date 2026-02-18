@@ -2,47 +2,53 @@
 
 **Tool Access Broker for MCP systems.**
 
-Filters which tools AI agents can access to reduce token costs and cognitive overhead.
+Every enabled MCP tool consumes tokens and adds cognitive overhead. eMCP sits between your AI agent and your MCP servers, letting you control exactly which tools are exposed.
 
-Every enabled MCP tool consumes tokens. eMCP sits between your AI agent and your MCP servers, letting you control exactly which tools are exposed through a web UI.
+## Install
 
-## Architecture
+```bash
+git clone https://github.com/IMUR/eMCP.git && cd eMCP
+make up
+```
+
+Open **<http://localhost:5010>** to manage your tools.
+
+Connect your AI agent to:
+
+```
+http://localhost:8090/v0/groups/emcp-global/mcp
+```
+
+## How It Works
 
 ```
 AI Agent
     |
     v
-eMCP Gateway (MCPJungle)     <-- Aggregates servers, filters by group
-    |         |
-    v         v
-  MCP       MCP              <-- Your MCP servers
- Server    Server
+eMCP Gateway         ← filters tools by group
+    |       |
+    v       v
+  MCP     MCP        ← your MCP servers
+ Server  Server
 ```
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| `emcp-server` | 8090 | MCPJungle gateway — aggregates servers, routes tool calls |
-| `emcp-manager` | 5010 | Web UI for tool selection and server management |
-| `emcp-db` | 5432 | PostgreSQL for gateway state |
+You add MCP servers. You choose which tools to expose. Your agent only sees what you've enabled.
 
-## Quick Start
+## Documentation
 
-See [Getting Started](getting-started.md) for full setup instructions.
+### Using eMCP
 
-```bash
-git clone https://github.com/IMUR/eMCP.git && cd eMCP
-cp .env.example .env    # Edit with your Postgres credentials
-make up                 # Start all services
-make register           # Register the demo server
-```
+- [Getting Started](getting-started.md) — installation, configuration, custom ports
+- [Adding Servers](adding-servers.md) — connect MCP servers via web UI or CLI
+- [Groups](groups.md) — create tool sets for different workflows
+- [Troubleshooting](troubleshooting.md) — something not working? start here
 
-Open **<http://localhost:5010>** to manage your tools.
+### Reference
 
-## Key Features
+- [API Reference](api-reference.md) — manager and gateway endpoints
+- [Security](SECURITY.md) — secrets handling, deployment practices
 
-- **Tool filtering** — expose only the tools your agent needs
-- **Group system** — create named tool sets for different workflows
-- **Web UI** — toggle tools on/off, add servers, manage groups
-- **MCP Streamable HTTP** — standard MCP transport for any client
-- **Zero-config demo** — ships with a filesystem server, ready to use
-- **Dynamic provisioning** — add MCP servers through the web UI
+### Contributing
+
+- [Contributing](contributing.md) — development setup, code style
+- [Changelog](changelog.md) — release history

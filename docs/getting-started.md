@@ -73,3 +73,4 @@ make clean      Remove containers, volumes, runtime data
 - [Add MCP Servers](adding-servers.md) — connect your own tools
 - [Groups](groups.md) — create custom tool sets
 - [API Reference](api-reference.md) — programmatic access
+- [Troubleshooting](troubleshooting.md) — something not working?

@@ -21,15 +21,15 @@ Connect your AI agent to: `http://localhost:8090/v0/groups/emcp-global/mcp`
 
 ## Documentation
 
-Full docs at [docs/](docs/) or run `make docs` to serve locally.
+Full docs at **[imur.github.io/eMCP](https://imur.github.io/eMCP)** or run `make docs` locally.
 
 | Topic | Link |
 |-------|------|
-| Setup & installation | [Getting Started](docs/getting-started.md) |
+| Setup & configuration | [Getting Started](docs/getting-started.md) |
 | Adding MCP servers | [Adding Servers](docs/adding-servers.md) |
 | Tool groups | [Groups](docs/groups.md) |
+| Something not working? | [Troubleshooting](docs/troubleshooting.md) |
 | API endpoints | [API Reference](docs/api-reference.md) |
-| Security | [Security](docs/SECURITY.md) |
 | Contributing | [Contributing](docs/contributing.md) |
 
 ## Make Targets
