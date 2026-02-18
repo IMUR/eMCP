@@ -53,10 +53,6 @@ services:
       - "5010:5000"
     environment:
       - MCPJUNGLE_API=http://emcp-server:8080
-      - EMCP_INFISICAL_SECRET=${EMCP_INFISICAL_SECRET:-}
-      - INFISICAL_WORKSPACE_ID=${INFISICAL_WORKSPACE_ID:-}
-      - INFISICAL_API_URL=${INFISICAL_API_URL:-https://app.infisical.com}
-      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-prod}
       - COMPOSE_DIR=/emcp
     volumes:
       - ./groups:/groups:rw
@@ -90,8 +86,7 @@ services:
     restart: unless-stopped
 
   # Add your own MCP servers below.
-  # See examples/ directory for common server configurations.
-  # Each server needs: stdin_open, tty, networks
+  # See examples/README.md for how to add servers.
 
 volumes:
   db_data:
