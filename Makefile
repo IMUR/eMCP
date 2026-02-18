@@ -8,8 +8,8 @@ up: .env ## Start all services
 	@[ -f demo-data/readme.txt ] || echo "eMCP demo filesystem" > demo-data/readme.txt
 	docker compose up -d
 	@echo ""
-	@echo "  Web UI:   http://localhost:5010"
-	@echo "  Gateway:  http://localhost:8090"
+	@echo "  Web UI:   http://localhost:$${EMCP_MANAGER_PORT:-5010}"
+	@echo "  Gateway:  http://localhost:$${EMCP_GATEWAY_PORT:-8090}"
 
 down: ## Stop all services
 	docker compose down
@@ -24,7 +24,7 @@ status: ## Show service health and tool count
 	@docker compose ps --format "table {{.Name}}\t{{.Status}}"
 	@echo ""
 	@printf "  Tools registered: "
-	@curl -sf http://localhost:8090/api/v0/tools 2>/dev/null | jq 'length' 2>/dev/null || echo "gateway not ready"
+	@curl -sf http://localhost:$${EMCP_GATEWAY_PORT:-8090}/api/v0/tools 2>/dev/null | jq 'length' 2>/dev/null || echo "gateway not ready"
 
 ps: ## List running containers
 	docker compose ps
@@ -52,11 +52,11 @@ dev: .env ## Start with locally built images (for development)
 	@[ -f demo-data/readme.txt ] || echo "eMCP demo filesystem" > demo-data/readme.txt
 	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d --build
 	@echo ""
-	@echo "  Web UI:   http://localhost:5010"
-	@echo "  Gateway:  http://localhost:8090"
+	@echo "  Web UI:   http://localhost:$${EMCP_MANAGER_PORT:-5010}"
+	@echo "  Gateway:  http://localhost:$${EMCP_GATEWAY_PORT:-8090}"
 
 clean: ## Remove all containers, volumes, and runtime data
-	docker compose down -v
+	docker compose down -v --remove-orphans
 	rm -rf data/ demo-data/
 
 docs: ## Serve documentation locally
