@@ -13,13 +13,22 @@ import requests
 from mcp_detector import detect_server, parse_mcp_url, DetectionError
 from compose_manager import (
     add_service, remove_service,
-    create_mcp_config, delete_mcp_config, trigger_reload,
-    get_container_status, ComposeError
+    create_mcp_config, delete_mcp_config,
+    get_container_status, ComposeError,
+    pull_image, start_service, stop_service,
+    write_env_vars, wait_for_mcp_ready
 )
-from infisical_client import (
-    create_secret, is_configured as infisical_configured,
-    InfisicalError
-)
+
+# Infisical is optional — only used if configured via env vars
+try:
+    from infisical_client import (
+        create_secret, is_configured as infisical_configured,
+        InfisicalError
+    )
+except ImportError:
+    def infisical_configured(): return False
+    def create_secret(*a, **kw): raise RuntimeError("Infisical not available")
+    class InfisicalError(Exception): pass
 
 app = Flask(__name__)
 
@@ -766,17 +775,22 @@ def api_provision_server():
         "description": "optional description"
     }
 
-    This will:
-    1. Store secrets in Infisical (if configured)
-    2. Add service to docker-compose.override.yaml
-    3. Create MCP config in /configs/
-    4. Start the container
-    5. Verify tools are discovered
+    Pipeline:
+    1. Validate input
+    2. Pull docker image
+    3. Write env vars to .env
+    4. Add service to docker-compose.yaml (for persistence)
+    5. Start the container directly via docker socket
+    6. Wait for MCP server readiness (not just container running)
+    7. Register tools with MCPJungle
+    8. Verify tool discovery
+
+    Rolls back on failure at any step.
     """
     try:
         data = request.get_json()
 
-        # Validate required fields
+        # --- Step 1: Validate input ---
         name = data.get('name', '').strip()
         image = data.get('image', '').strip()
         command = data.get('command', [])
@@ -785,7 +799,6 @@ def api_provision_server():
 
         if not name:
             return jsonify({"success": False, "error": "Server name is required"}), 400
-
         if not image:
             return jsonify({"success": False, "error": "Docker image is required"}), 400
 
@@ -794,82 +807,35 @@ def api_provision_server():
         if not safe_name or len(safe_name) > 50:
             return jsonify({"success": False, "error": "Invalid server name"}), 400
 
-        # Store secrets in Infisical if configured and env vars provided
-        env_var_names = []
-        if env_vars:
-            if infisical_configured():
-                for key, value in env_vars.items():
-                    if value:  # Only store non-empty values
-                        try:
-                            create_secret(key, value)
-                            env_var_names.append(key)
-                        except InfisicalError as e:
-                            return jsonify({
-                                "success": False,
-                                "error": f"Failed to store secret '{key}': {str(e)}"
-                            }), 500
-            else:
-                # Infisical not configured - secrets need to be added manually
-                env_var_names = list(env_vars.keys())
+        container_name = f"{safe_name}-mcp"
 
-        # Detect host paths in command and create volume mounts
+        # Detect host paths in command for volume mounts
         volumes = []
+        skip_paths = {'/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr'}
         for arg in command:
-            # Check if arg looks like a host path (absolute path starting with /)
-            if arg.startswith('/') and not arg.startswith('//'):
-                # Skip common non-path arguments
-                if arg in ['/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr']:
-                    continue
-                # Add as volume mount (same path inside container)
+            if arg.startswith('/') and not arg.startswith('//') and arg not in skip_paths:
                 volumes.append(f"{arg}:{arg}:rw")
 
-        # Explicitly pull the image first to prevent timeout during reload
-        # This uses the mounted docker socket so it pulls to the host daemon
+        # --- Step 2: Pull docker image ---
         try:
-             pull_result = subprocess.run(
-                 ["docker", "pull", image],
-                 capture_output=True,
-                 text=True,
-                 timeout=600  # 10 minute timeout for pull
-             )
-             if pull_result.returncode != 0:
-                 # Pull failed - check if image exists locally
-                 check_local = subprocess.run(
-                     ["docker", "images", "-q", image],
-                     capture_output=True,
-                     text=True
-                 )
-                 if check_local.returncode == 0 and check_local.stdout.strip():
-                     # Image exists locally, proceed with warning/info
-                     print(f"Warning: Failed to pull '{image}', using local version.")
-                 else:
-                     return jsonify({
-                         "success": False,
-                         "error": f"Failed to pull image '{image}' and not found locally: {pull_result.stderr}"
-                     }), 500
-        except subprocess.TimeoutExpired:
-             # Timeout - check if image exists locally
-             check_local = subprocess.run(
-                 ["docker", "images", "-q", image],
-                 capture_output=True,
-                 text=True
-             )
-             if check_local.returncode == 0 and check_local.stdout.strip():
-                 print(f"Warning: Timed out pulling '{image}', using local version.")
-             else:
-                 return jsonify({
-                     "success": False,
-                     "error": f"Timed out pulling image '{image}'"
-                 }), 500
-        except Exception as e:
-             return jsonify({
-                 "success": False,
-                 "error": f"Error pulling image '{image}': {str(e)}"
-             }), 500
+            pull_image(image)
+        except ComposeError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
-        # Add service to docker-compose.yaml
+        # --- Step 3: Write env vars to .env ---
+        env_var_names = []
+        if env_vars:
+            try:
+                env_var_names = write_env_vars(env_vars)
+            except Exception as e:
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to write env vars: {str(e)}"
+                }), 500
+
+        # --- Step 4: Add service to docker-compose.yaml ---
         try:
-            container_name = add_service(
+            add_service(
                 name=safe_name,
                 image=image,
                 command=command if command else [],
@@ -883,52 +849,58 @@ def api_provision_server():
                 "error": f"Failed to add service: {str(e)}"
             }), 500
 
-        # Create MCP config file
+        # --- Step 5: Create MCP config file ---
         try:
-            config_path = create_mcp_config(
+            create_mcp_config(
                 name=safe_name,
                 container_name=container_name,
                 command=command if command else ["stdio"],
                 description=description
             )
         except ComposeError as e:
-            # Rollback: remove service from override
-            remove_service(safe_name)
+            remove_service(safe_name)  # Rollback step 4
             return jsonify({
                 "success": False,
                 "error": f"Failed to create config: {str(e)}"
             }), 500
 
-        # add_service() already triggered host reload via systemd
-        # add_service() already triggered host reload via systemd
-        
-        # Wait for container to start (polling for up to 60s to allow for image pulls)
-        max_retries = 30
-        container_running = False
-        container_status = "unknown"
-        
-        for _ in range(max_retries):
-            time.sleep(2)
-            status = get_container_status(container_name)
-            container_running = status.get("running", False)
-            container_status = status.get("status", "unknown")
-            if container_running:
-                break
-        
-        if not container_running:
-            # If container didn't start, registration will definitely fail
-            delete_mcp_config(safe_name)
-            remove_service(safe_name)
+        # --- Step 6: Start the container directly ---
+        try:
+            start_service(
+                service_name=container_name,
+                image=image,
+                command=command if command else [],
+                env_vars=env_vars if env_vars else None,
+                volumes=volumes if volumes else None,
+                timeout=60
+            )
+        except ComposeError as e:
+            delete_mcp_config(safe_name)  # Rollback step 5
+            remove_service(safe_name)      # Rollback step 4
             return jsonify({
                 "success": False,
-                "error": f"Container failed to start after 60s. Status: {container_status}. Check docker logs."
+                "error": f"Container failed to start: {str(e)}"
             }), 500
 
-        # Register server with MCPJungle
+        # --- Step 7: Wait for MCP server readiness ---
+        mcp_ready = wait_for_mcp_ready(
+            container_name=container_name,
+            command=command if command else [],
+            timeout=90
+        )
+
+        if not mcp_ready:
+            # Container is running but MCP server isn't responding.
+            # Don't roll back — the container might still come up.
+            # But warn the user clearly.
+            pass
+
+        # --- Step 8: Register with MCPJungle ---
         register_result = exec_emcp(["register", "-c", f"/configs/{safe_name}.json"])
         if register_result.returncode != 0:
             error_msg = register_result.stderr.strip() or register_result.stdout.strip()
-            # Rollback
+            # Rollback everything
+            stop_service(container_name)
             delete_mcp_config(safe_name)
             remove_service(safe_name)
             return jsonify({
@@ -936,30 +908,32 @@ def api_provision_server():
                 "error": f"Failed to register with MCPJungle: {error_msg}"
             }), 500
 
-        # Count discovered tools
+        # --- Count discovered tools ---
         tool_count = 0
         try:
             tools_response = requests.get(f"{MCPJUNGLE_API}/api/v0/tools", timeout=10)
             if tools_response.ok:
                 all_tools = tools_response.json()
-                tool_count = len([t for t in all_tools if t.get("name", "").startswith(f"{safe_name}__")])
+                tool_count = len([t for t in all_tools
+                                  if t.get("name", "").startswith(f"{safe_name}__")])
         except Exception:
-            pass  # Tool count is optional
+            pass  # Tool count is informational
 
-        # Server was added - success. Container status is separate.
+        # --- Success response ---
         response = {
             "success": True,
-            "message": f"Server '{safe_name}' added",
+            "message": f"Server '{safe_name}' provisioned with {tool_count} tools",
             "name": safe_name,
             "container_name": container_name,
-            "container_running": container_running,
-            "container_status": container_status,
+            "container_running": True,
             "tool_count": tool_count,
-            "infisical_configured": infisical_configured()
         }
 
-        if not container_running:
-            response["warning"] = f"Container status: {container_status}. Check 'docker logs {container_name}' if it doesn't start."
+        if not mcp_ready:
+            response["warning"] = (
+                f"Container is running but MCP server did not respond to readiness check. "
+                f"Tools may still be loading. Check 'docker logs {container_name}'."
+            )
 
         return jsonify(response)
 
@@ -1038,20 +1012,24 @@ def api_delete_server(name):
 
     This will:
     1. Deregister from MCPJungle
-    2. Delete the MCP config file
-    3. Remove from docker-compose.yaml (triggers host reload)
-    4. Host reload stops/removes the container
+    2. Stop and remove the container
+    3. Delete the MCP config file
+    4. Remove from docker-compose.yaml
     """
     try:
+        container_name = f"{name}-mcp"
+
         # Deregister from MCPJungle first
         exec_emcp(["deregister", name])
         # Ignore errors - server might not be registered
 
+        # Stop and remove the container directly
+        stop_service(container_name)
+
         # Delete config file
         delete_mcp_config(name)
 
-        # Remove from docker-compose.yaml (this triggers host reload)
-        # The reload will stop/remove the container
+        # Remove from docker-compose.yaml
         removed = remove_service(name)
 
         if not removed:
@@ -1112,12 +1090,13 @@ def api_restart_server(name):
         }), 500
 
 
-@app.route('/api/servers/infisical-status', methods=['GET'])
-def api_infisical_status():
-    """Check if Infisical is configured for secret management."""
+@app.route('/api/servers/secrets-status', methods=['GET'])
+def api_secrets_status():
+    """Check secret management configuration."""
     return jsonify({
         "success": True,
-        "configured": infisical_configured()
+        "method": "infisical" if infisical_configured() else "env_file",
+        "infisical_configured": infisical_configured()
     })
 
 
