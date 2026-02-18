@@ -9,7 +9,7 @@ eMCP is a Tool Access Broker that filters which MCP (Model Context Protocol) too
 ## Commands
 
 ```bash
-make up         # Start all services (pulls pre-built images)
+make up         # Start all services
 make dev        # Start with locally built images (for development)
 make down       # Stop all services
 make logs       # Tail gateway logs
@@ -69,14 +69,6 @@ docker exec emcp-server /mcpjungle register -c /configs/<name>.json
 docker exec emcp-server /mcpjungle deregister <name>
 make register   # Re-register all configs
 ```
-
-### Systemd (for Add Server feature)
-
-```bash
-cd systemd && sudo ./install.sh
-```
-
-Watches `.reload-trigger` and runs `docker compose up -d` when the web UI provisions a server.
 
 ## Design Principles
 

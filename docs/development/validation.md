@@ -383,62 +383,9 @@ make help
 
 ---
 
-## Phase 9: Systemd Integration
+## Phase 9: Resilience
 
-*Skip this phase if testing without systemd (e.g., container-based VM).*
-
-### 9.1 Install Units
-
-```bash
-cd systemd
-sudo ./install.sh
-cd ..
-```
-
-**Verify:**
-
-```bash
-systemctl status emcp-reload.path
-```
-
-**Pass:** Shows `active (waiting)`.
-
-### 9.2 Trigger Reload
-
-```bash
-touch .reload-trigger
-sleep 5
-```
-
-**Verify:**
-
-```bash
-journalctl -u emcp-reload.service --since "1 minute ago" --no-pager
-```
-
-**Pass:** Log shows `docker compose up -d` was executed.
-
-### 9.3 Uninstall Units
-
-```bash
-cd systemd
-sudo ./uninstall.sh
-cd ..
-```
-
-**Verify:**
-
-```bash
-systemctl status emcp-reload.path 2>&1
-```
-
-**Pass:** Shows `not found` or `inactive`.
-
----
-
-## Phase 10: Resilience
-
-### 10.1 Gateway Restart Recovery
+### 9.1 Gateway Restart Recovery
 
 ```bash
 docker restart emcp-server
@@ -448,7 +395,7 @@ curl -s http://localhost:8090/api/v0/tools | jq 'length'
 
 **Pass:** Tools are still available after restart.
 
-### 10.2 Database Restart Recovery
+### 9.2 Database Restart Recovery
 
 ```bash
 docker restart emcp-db
@@ -458,7 +405,7 @@ curl -s http://localhost:8090/api/v0/tools | jq 'length'
 
 **Pass:** Gateway reconnects and tools remain available.
 
-### 10.3 Full Stack Restart
+### 9.3 Full Stack Restart
 
 ```bash
 docker compose down
@@ -469,11 +416,37 @@ curl -s http://localhost:5010/api/tools | jq 'keys'
 
 **Pass:** All services recover. Note: tools may need re-registration after a full restart — run `make register` if tools are missing.
 
+### 9.4 MCP Server Container Restart
+
+```bash
+# Record tool count before
+BEFORE=$(curl -s http://localhost:8090/api/v0/tools | jq 'length')
+echo "Tools before: $BEFORE"
+
+# Restart only the MCP server container (not the gateway)
+docker restart filesystem-mcp
+sleep 10
+
+# Check if tools are still served
+AFTER=$(curl -s http://localhost:8090/api/v0/tools | jq 'length')
+echo "Tools after: $AFTER"
+```
+
+If tools are missing after the restart, re-register:
+
+```bash
+make register
+FIXED=$(curl -s http://localhost:8090/api/v0/tools | jq 'length')
+echo "Tools after re-register: $FIXED"
+```
+
+**Pass:** Tools return after `make register`. This confirms that restarting an MCP server container can cause its tools to stop being served. `make register` is the fix.
+
 ---
 
-## Phase 11: Security Checks
+## Phase 10: Security Checks
 
-### 11.1 No Secrets in Repo
+### 10.1 No Secrets in Repo
 
 ```bash
 grep -rn 'password\|secret\|token\|key' . \
@@ -486,7 +459,7 @@ grep -rn 'password\|secret\|token\|key' . \
 
 **Pass:** No lines contain actual secret values. Only variable references and documentation.
 
-### 11.2 .env Permissions
+### 10.2 .env Permissions
 
 ```bash
 # Linux:
@@ -497,7 +470,7 @@ stat -f '%A' .env
 
 **Pass:** Returns `600` or `644`.
 
-### 11.3 .env Not Tracked
+### 10.3 .env Not Tracked
 
 ```bash
 git status --porcelain .env
@@ -505,7 +478,7 @@ git status --porcelain .env
 
 **Pass:** Returns empty (file is gitignored) or `??` (untracked). Never `A` or `M`.
 
-### 11.4 Docker Socket Access
+### 10.4 Docker Socket Access
 
 ```bash
 docker exec emcp-manager ls /var/run/docker.sock
@@ -515,7 +488,7 @@ docker exec emcp-manager ls /var/run/docker.sock
 
 ---
 
-## Phase 12: Cleanup
+## Phase 11: Cleanup
 
 ```bash
 cd ~
@@ -539,10 +512,9 @@ rm -rf eMCP
 | 6 | Group System | |
 | 7 | Manual Server Addition | |
 | 8 | Make Targets | |
-| 9 | Systemd Integration | |
-| 10 | Resilience | |
-| 11 | Security Checks | |
-| 12 | Cleanup | |
+| 9 | Resilience | |
+| 10 | Security Checks | |
+| 11 | Cleanup | |
 
 **Tested on:** *(OS, Docker version, date)*
 **Result:** *(PASS / FAIL — list failures)*

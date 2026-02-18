@@ -9,7 +9,7 @@
 5. Enter any required environment variables
 6. Click **Provision**
 
-Requires [systemd integration](../README.md#systemd-integration) for automatic container startup.
+The manager communicates with Docker directly via the mounted socket to start new containers.
 
 ## Manually
 
@@ -64,6 +64,7 @@ rm configs/my-server.json
 
 ## Troubleshooting
 
-- **Tools not appearing**: `make register`
+- **Tools not appearing**: Run `make register` to re-register all servers
+- **Tools disappeared after a container restart**: If an MCP server container restarts while the gateway is still running, its tools may silently stop being served. Run `make register` to fix. This deregisters and re-registers all servers.
 - **Container not starting**: `docker compose logs my-server`
 - **Connection errors**: Ensure the server is on `emcp-network`

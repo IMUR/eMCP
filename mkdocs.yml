@@ -33,7 +33,6 @@ nav:
   - API Reference: api-reference.md
   - Security: SECURITY.md
   - Development:
-      - Testing: development/testing.md
       - Validation: development/validation.md
       - Release: development/release.md
   - Contributing: contributing.md
