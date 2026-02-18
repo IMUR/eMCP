@@ -64,6 +64,6 @@ rm configs/my-server.json
 
 ## Troubleshooting
 
-- **Tools not appearing**: `python3 scripts/re-register-tools.py`
+- **Tools not appearing**: `make register`
 - **Container not starting**: `docker compose logs my-server`
 - **Connection errors**: Ensure the server is on `emcp-network`

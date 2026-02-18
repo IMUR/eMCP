@@ -8,19 +8,13 @@ eMCP is a Tool Access Broker that filters which MCP (Model Context Protocol) too
 
 ## Commands
 
-### Docker Compose (primary development)
-
 ```bash
-docker compose up -d              # Start all services
-docker compose logs -f emcp-server  # Watch gateway logs
-docker compose restart emcp-server  # Restart after config changes
-```
-
-### eMCP Manager API
-
-```bash
-curl http://localhost:5010/api/current   # Current tool selection
-curl http://localhost:5010/api/tools     # All available tools
+make up         # Start all services
+make down       # Stop all services
+make logs       # Tail gateway logs
+make status     # Service health + tool count
+make register   # Re-register all configs with MCPJungle
+make help       # Show all targets
 ```
 
 ## Secret Management
@@ -72,7 +66,7 @@ Config files in `configs/` are NOT auto-discovered. Servers must be registered:
 ```bash
 docker exec emcp-server /mcpjungle register -c /configs/<name>.json
 docker exec emcp-server /mcpjungle deregister <name>
-python3 scripts/re-register-tools.py   # Re-register all
+make register   # Re-register all configs
 ```
 
 ### Systemd (for Add Server feature)

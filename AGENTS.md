@@ -2,14 +2,15 @@
 
 Guidance for agentic coding assistants working in this repository.
 
-## Development Commands
+## Commands
 
 ```bash
-docker compose up -d                      # Start all services
-docker compose logs -f emcp-server        # Watch gateway logs
-docker compose restart emcp-server        # Restart after config changes
-curl http://localhost:5010/api/tools      # List available tools
-curl http://localhost:5010/api/current    # Current tool selection
+make up         # Start all services
+make down       # Stop all services
+make logs       # Tail gateway logs
+make status     # Service health + tool count
+make register   # Re-register all configs with MCPJungle
+make help       # Show all targets
 ```
 
 ## Code Style

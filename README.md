@@ -35,7 +35,7 @@ cp .env.example .env
 mkdir -p demo-data
 echo "eMCP is running" > demo-data/readme.txt
 
-docker compose up -d
+make up
 ```
 
 Open **http://localhost:5010** — the web UI shows available tools from the included demo server.
@@ -93,20 +93,25 @@ cd systemd
 sudo ./install.sh
 ```
 
+## Make Targets
+
+```
+make help       Show all targets
+make up         Start all services
+make down       Stop all services
+make restart    Restart all services
+make logs       Tail gateway logs
+make status     Service health + tool count
+make register   Re-register all configs with MCPJungle
+make clean      Remove containers, volumes, runtime data
+```
+
 ## API
 
 ```bash
 curl http://localhost:5010/api/tools      # All available tools
 curl http://localhost:5010/api/current    # Current tool selection
 curl http://localhost:5010/api/servers    # Registered servers
-```
-
-## Re-registering Tools
-
-If tools go missing after a restart:
-
-```bash
-python3 scripts/re-register-tools.py
 ```
 
 ## License
