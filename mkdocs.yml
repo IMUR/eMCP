@@ -29,6 +29,7 @@ nav:
   - Home: index.md
   - User Guide:
       - Getting Started: getting-started.md
+      - Running without Docker: native.md
       - Adding Servers: adding-servers.md
       - Groups: groups.md
       - Troubleshooting: troubleshooting.md

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eMCP Native</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #222;
+      --muted: #666;
+      --border: #ddd;
+      --card: #fff;
+      --ok: #d4f5d4;
+      --bad: #fdd;
+      --accent: #fffbe6;
+      --pill: #eef;
+      --pill-fg: #336;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --fg: #e0e0e0;
+        --muted: #888;
+        --border: #333;
+        --card: #242424;
+        --ok: #1f3a1f;
+        --bad: #3a1f1f;
+        --accent: #3a3a1f;
+        --pill: #2a2a3a;
+        --pill-fg: #aab;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      max-width: 1200px;
+      margin-inline: auto;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    h1 {
+      margin: 0 0 0.2rem 0;
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+    h1 .tag {
+      font-size: 0.5em;
+      color: var(--muted);
+      font-weight: 400;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+      font-size: 0.85rem;
+    }
+    .health {
+      padding: 0.5rem 0.8rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 1.5rem;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.8rem;
+    }
+    .health.ok { background: var(--ok); }
+    .health.bad { background: var(--bad); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.6rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      background: var(--pill);
+      color: var(--pill-fg);
+      padding: 0.1rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+    .item {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.82rem;
+    }
+    .item:last-child { border-bottom: none; }
+    .item .meta {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 0.2rem;
+    }
+    .endpoint {
+      background: var(--accent);
+      padding: 0.35rem 0.5rem;
+      border-radius: 3px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.78rem;
+      margin: 0.3rem 0;
+      word-break: break-all;
+      display: inline-block;
+    }
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .full {
+      grid-column: 1 / -1;
+    }
+    #tools {
+      max-height: 380px;
+      overflow-y: auto;
+      column-count: 2;
+      column-gap: 1.5rem;
+    }
+    @media (max-width: 760px) { #tools { column-count: 1; } }
+    #tools .item { break-inside: avoid; }
+    .footer {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 2rem;
+      text-align: center;
+    }
+    .footer code {
+      background: var(--card);
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <h1>eMCP <span class="tag">native</span></h1>
+  <div class="sub">Lightweight management plane for MCPJungle. No Docker. Runs from systemd.</div>
+
+  <div id="health" class="health">checking…</div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Servers <span id="srv-count" class="badge">—</span></h2>
+      <div id="servers"></div>
+    </div>
+    <div class="panel">
+      <h2>Groups <span id="grp-count" class="badge">—</span></h2>
+      <div id="groups"></div>
+    </div>
+    <div class="panel full">
+      <h2>Tools <span id="tool-count" class="badge">—</span></h2>
+      <div id="tools"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    MCP clients connect to a group endpoint:
+    <code>http://&lt;host&gt;:3700/v0/groups/&lt;group-name&gt;/mcp</code>
+  </div>
+
+  <script>
+    async function jget(p) {
+      const r = await fetch(p);
+      if (!r.ok) throw new Error(`${p}: ${r.status}`);
+      return r.json();
+    }
+
+    function el(html) {
+      const t = document.createElement('template');
+      t.innerHTML = html.trim();
+      return t.content.firstChild;
+    }
+
+    async function load() {
+      try {
+        const h = await jget('/api/health');
+        const hel = document.getElementById('health');
+        if (h.gateway === 'ok') {
+          hel.className = 'health ok';
+          hel.textContent = `gateway ${h.gateway_url} — manager OK`;
+        } else {
+          hel.className = 'health bad';
+          hel.textContent = `gateway DOWN: ${h.gateway}`;
+        }
+
+        const servers = await jget('/api/servers');
+        document.getElementById('srv-count').textContent = servers.length;
+        const sEl = document.getElementById('servers');
+        sEl.innerHTML = '';
+        if (servers.length === 0) {
+          sEl.appendChild(el('<div class="empty">no servers registered yet</div>'));
+        } else {
+          servers.forEach(s => {
+            const name = s.name || s.Name || '(unnamed)';
+            const transport = s.transport || s.Transport || '';
+            sEl.appendChild(el(`
+              <div class="item">
+                <strong>${name}</strong>
+                ${transport ? `<span class="meta">transport: ${transport}</span>` : ''}
+              </div>
+            `));
+          });
+        }
+
+        const groups = await jget('/api/groups');
+        document.getElementById('grp-count').textContent = groups.length;
+        const gEl = document.getElementById('groups');
+        gEl.innerHTML = '';
+        if (groups.length === 0) {
+          gEl.appendChild(el('<div class="empty">no groups defined yet</div>'));
+        } else {
+          groups.forEach(g => {
+            const tools = (g.included_tools || g.includedTools || []).length;
+            gEl.appendChild(el(`
+              <div class="item">
+                <strong>${g.name}</strong>
+                <div><span class="endpoint">/v0/groups/${g.name}/mcp</span></div>
+                <div class="meta">${tools} tool${tools === 1 ? '' : 's'} included</div>
+              </div>
+            `));
+          });
+        }
+
+        const tools = await jget('/api/tools');
+        document.getElementById('tool-count').textContent = tools.length;
+        const tEl = document.getElementById('tools');
+        tEl.innerHTML = '';
+        if (tools.length === 0) {
+          tEl.appendChild(el('<div class="empty">no tools available — register a server first</div>'));
+        } else {
+          tools.forEach(t => {
+            tEl.appendChild(el(`<div class="item">${t.name}</div>`));
+          });
+        }
+      } catch (e) {
+        const hel = document.getElementById('health');
+        hel.className = 'health bad';
+        hel.textContent = 'manager error: ' + e.message;
+      }
+    }
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>
