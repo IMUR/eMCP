@@ -1,0 +1,29 @@
+[Unit]
+Description=eMCP Manager (Flask UI, native)
+After=network.target emcp-gateway.service
+Wants=emcp-gateway.service
+
+[Service]
+Type=simple
+User=__EMCP_USER__
+Group=__EMCP_USER__
+EnvironmentFile=__EMCP_ETC__/env
+WorkingDirectory=__EMCP_OPT__
+__EMCP_PATH_LINE__
+ExecStart=__EMCP_OPT__/venv/bin/python __EMCP_OPT__/app.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__EMCP_DATA_DIR__
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

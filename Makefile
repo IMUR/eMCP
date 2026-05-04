@@ -1,4 +1,6 @@
-.PHONY: help up down restart logs register status ps clean dev docs
+.PHONY: help up down restart logs register status ps clean dev docs \
+        native-install native-uninstall native-up native-down native-restart \
+        native-status native-logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -69,3 +71,32 @@ clean: ## Remove all containers, volumes, and runtime data
 docs: ## Serve documentation locally
 	@command -v mkdocs >/dev/null 2>&1 || { echo "Install mkdocs: pip install mkdocs-material"; exit 1; }
 	mkdocs serve
+
+# ----------------------------------------------------------------- Native targets
+# Run eMCP without Docker. See native/README.md and docs/native.md for details.
+
+native-install: ## Install native eMCP (downloads mcpjungle, sets up venv, systemd)
+	sudo ./native/install.sh
+
+native-uninstall: ## Remove native install (preserves data dir)
+	sudo ./native/install.sh --uninstall
+
+native-up: ## Start native services
+	sudo systemctl start emcp-gateway emcp-manager
+	@$(MAKE) --no-print-directory native-status
+
+native-down: ## Stop native services
+	sudo systemctl stop emcp-manager emcp-gateway
+
+native-restart: ## Restart native services
+	sudo systemctl restart emcp-gateway emcp-manager
+	@$(MAKE) --no-print-directory native-status
+
+native-status: ## Show native service status + tool count
+	@systemctl is-active emcp-gateway emcp-manager 2>/dev/null | paste -sd' / ' - | sed 's/^/  gateway/manager: /'
+	@printf "  Tools registered: "
+	@curl -sf http://localhost:$${EMCP_GATEWAY_PORT:-3700}/api/v0/tools 2>/dev/null | jq 'length' 2>/dev/null || echo "gateway not ready"
+	@echo "  Manager UI: http://localhost:$${EMCP_MANAGER_PORT:-3701}"
+
+native-logs: ## Tail native gateway + manager logs
+	sudo journalctl -fu emcp-gateway -u emcp-manager
